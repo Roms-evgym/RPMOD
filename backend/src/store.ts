@@ -1,8 +1,8 @@
 import Database from "better-sqlite3";
-import { randomBytes, createHash, randomUUID } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { ProjectManifest } from "../../shared/types.js";
+type ProjectManifest = { shareCode: string; name: string; packHash: string; packFormat: number; gameVersions: string[]; customItems: unknown[] };
 
 mkdirSync("storage", { recursive: true });
 const db = new Database("storage/rpmod.sqlite");
@@ -31,4 +31,4 @@ export function getManifest(code: string): ProjectManifest | undefined {
   const row = db.prepare("SELECT manifest_json FROM projects WHERE share_code=?").get(code) as {manifest_json:string}|undefined;
   return row ? JSON.parse(row.manifest_json) as ProjectManifest : undefined;
 }
-export function getPackPath(code: string) { return join("storage", code, "pack.zip"); }
+export function getPackPath(code: string) { return /^[A-Z0-9-]{4,20}$/.test(code) ? join("storage", code, "pack.zip") : undefined; }
