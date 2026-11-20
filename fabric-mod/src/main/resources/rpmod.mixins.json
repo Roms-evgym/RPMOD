@@ -6,7 +6,8 @@
   "client": [
     "AnvilScreenMixin",
     "AbstractContainerScreenMixin",
-    "AnvilScreenAccessor"
+    "AnvilScreenAccessor",
+    "AbstractContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
