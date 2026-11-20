@@ -18,7 +18,7 @@ final class MinecraftClientActions {
             String id = "file/RPMOD_" + code + ".zip";
             if (!repository.isAvailable(id)) {
                 if (client.player != null) client.player.displayClientMessage(
-                    Component.literal("RPMOD: ZIP wurde gespeichert, Minecraft hat das Pack aber nicht erkannt: " + id), false);
+                    Component.literal("RPMOD: ZIP wurde gespeichert, Minecraft hat das Pack aber nicht erkannt: " + id));
                 return;
             }
             Set<String> selected = new LinkedHashSet<>(repository.getSelectedIds());
