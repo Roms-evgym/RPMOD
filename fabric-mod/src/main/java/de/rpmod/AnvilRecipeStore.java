@@ -9,6 +9,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public final class AnvilRecipeStore {
@@ -23,8 +25,9 @@ public final class AnvilRecipeStore {
 
     public static void reload() {
         List<Recipe> recipes = new ArrayList<>();
+        Set<String> seenRenameKeys = new HashSet<>();
         try (Stream<Path> directories = Files.list(RPMODClient.projectsDirectory)) {
-            for (Path directory : directories.filter(Files::isDirectory).toList()) {
+            for (Path directory : directories.filter(Files::isDirectory).sorted().toList()) {
                 Path manifestPath = directory.resolve("manifest.json");
                 if (!Files.exists(manifestPath)) continue;
                 try (var reader = Files.newBufferedReader(manifestPath)) {
@@ -34,12 +37,15 @@ public final class AnvilRecipeStore {
                     if (items == null) continue;
                     for (var element : items) {
                         JsonObject item = element.getAsJsonObject();
-                        recipes.add(new Recipe(
+                        String baseItem = item.get("baseItem").getAsString();
+                        String renameTrigger = item.get("renameTrigger").getAsString();
+                        String renameKey = baseItem.toLowerCase() + "|" + renameTrigger.toLowerCase();
+                        if (seenRenameKeys.add(renameKey)) recipes.add(new Recipe(
                             code,
                             item.get("id").getAsString(),
-                            item.get("baseItem").getAsString(),
+                            baseItem,
                             item.get("baseItemName").getAsString(),
-                            item.get("renameTrigger").getAsString()
+                            renameTrigger
                         ));
                     }
                 } catch (Exception exception) {
