@@ -108,7 +108,8 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
     for (const item of manifest.customItems) {
       const id = safeFileName(item.id);
       const projectPrefix = manifest.shareCode.toLowerCase();
-      const modelId = `rpmod:${projectPrefix}/${id}`;
+      const itemModelId = `rpmod:${projectPrefix}/${id}`;
+      const modelId = `rpmod:item/${projectPrefix}/${id}`;
       const textureId = `rpmod:item/${projectPrefix}/${id}`;
       archive.append(JSON.stringify({
         model: { type: "minecraft:model", model: modelId }
@@ -131,7 +132,7 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
       archive.append(JSON.stringify(model, null, 2) + "\n", { name: `assets/rpmod/models/item/${projectPrefix}/${id}.json` });
       archive.append(itemTexture(item), { name: `assets/rpmod/textures/item/${projectPrefix}/${id}.png` });
       commands.push(`# ${item.renameTrigger} · ${item.baseItemName}`);
-      commands.push(`/give @p ${item.baseItem}[minecraft:item_model="${modelId}"] 1`);
+      commands.push(`/give @p ${item.baseItem}[minecraft:item_model="${itemModelId}"] 1`);
     }
     const byBaseItem = new Map<string, CustomItem[]>();
     for (const item of manifest.customItems) {
