@@ -29,7 +29,10 @@ const defaults: Record<string, DisplayTransform> = {
 const viewConfig: Record<ViewKey, { label: string; context: keyof typeof defaults; camera: [number, number, number]; target: [number, number, number] }> = {
   first: { label: "First Person", context: "firstperson_righthand", camera: [15, 11, 19], target: [0, 0, 0] },
   third: { label: "Third Person", context: "thirdperson_righthand", camera: [19, 13, 23], target: [0, 0, 0] },
-  helmet: { label: "Helm", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  chestplate: { label: "Brustplatte", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  leggings: { label: "Beinschutz", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  boots: { label: "Stiefel", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
+  helmet: { label: "Helm", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
+  chestplate: { label: "Brustplatte", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
+  leggings: { label: "Beinschutz", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
+  boots: { label: "Stiefel", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
   inventory: { label: "Inventar", context: "gui", camera: [18, 16, 22], target: [0, 0, 0] },
   itemframe: { label: "Item Frame", context: "fixed", camera: [0, 0, 28], target: [0, 0, 0] },
   shelf: { label: "Regal", context: "gui", camera: [18, 14, 23], target: [0, 0, 0] }
