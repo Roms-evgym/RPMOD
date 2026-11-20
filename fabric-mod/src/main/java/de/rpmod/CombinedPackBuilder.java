@@ -30,7 +30,7 @@ public final class CombinedPackBuilder {
         int itemCount = 0;
 
         try (Stream<Path> directories = Files.list(RPMODClient.projectsDirectory)) {
-            for (Path directory : directories.filter(Files::isDirectory).toList()) {
+            for (Path directory : directories.filter(Files::isDirectory).sorted().toList()) {
                 Path manifestPath = directory.resolve("manifest.json");
                 Path packPath = directory.resolve("pack.zip");
                 if (!Files.exists(manifestPath) || !Files.exists(packPath)) continue;
