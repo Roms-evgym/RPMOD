@@ -36,7 +36,14 @@ public final class RpProjectManager {
             catch (IOException exception) { RPMODClient.LOGGER.warn("Could not create RPMOD config", exception); }
         }
         String configured = properties.getProperty("apiBase", apiBase).trim();
-        if (!configured.isBlank()) apiBase = configured.replaceAll("/+$", "");
+        // Migrate existing installations from the old local-only default to the hosted API.
+        if (configured.isBlank() || configured.equals("http://localhost:8787") || configured.equals("http://127.0.0.1:8787")) {
+            configured = apiBase;
+            properties.setProperty("apiBase", apiBase);
+            try (var output = Files.newOutputStream(config)) { properties.store(output, "RPMOD API endpoint"); }
+            catch (IOException exception) { RPMODClient.LOGGER.warn("Could not update RPMOD config", exception); }
+        }
+        apiBase = configured.replaceAll("/+$", "");
         RPMODClient.LOGGER.info("RPMOD API endpoint: {}", apiBase);
     }
 
