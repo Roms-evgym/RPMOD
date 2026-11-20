@@ -1,6 +1,7 @@
 package de.rpmod;
 
 import net.minecraft.client.Minecraft;
+import de.rpmod.mixin.AnvilScreenAccessor;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
