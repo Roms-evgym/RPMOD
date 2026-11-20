@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import de.rpmod.mixin.AnvilScreenAccessor;
 import de.rpmod.mixin.AbstractContainerScreenAccessor;
+import de.rpmod.mixin.ScreenAccessor;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -36,7 +37,7 @@ public final class AnvilSidebar {
         int y = accessor.rpmod$getTopPos() + 30;
         EditBox box = new EditBox(screen.getFont(), x, y, PANEL_WIDTH - 16, 14, Component.literal("RPMOD Suche"));
         box.setMaxLength(48);
-        screen.addRenderableWidget(box);
+        ((ScreenAccessor) screen).rpmod$addRenderableWidget(box);
         SEARCH_BOXES.put(screen, box);
     }
 
