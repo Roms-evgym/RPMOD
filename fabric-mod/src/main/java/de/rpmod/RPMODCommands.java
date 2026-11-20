@@ -12,6 +12,11 @@ public final class RPMODCommands {
     public static void register() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
             dispatcher.register(ClientCommands.literal("rp")
+                .then(ClientCommands.literal("gui")
+                    .executes(context -> {
+                        Minecraft.getInstance().setScreen(new RpGuiScreen());
+                        return 1;
+                    }))
                 .then(ClientCommands.literal("join")
                     .then(ClientCommands.argument("shareCode", StringArgumentType.word())
                         .executes(context -> {
