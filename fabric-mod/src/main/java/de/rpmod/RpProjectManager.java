@@ -45,7 +45,8 @@ public final class RpProjectManager {
         Thread.startVirtualThread(() -> {
             try {
                 syncOne(code, true);
-                feedback.accept("Projekt " + code + " wurde heruntergeladen und automatisch aktiviert.");
+                refreshCombined();
+                feedback.accept("Projekt " + code + " wurde geladen. Alle verbundenen Projekte sind gemeinsam aktiviert.");
             } catch (Exception exception) {
                 RPMODClient.LOGGER.error("Could not join RPMOD project {}", code, exception);
                 feedback.accept("Projekt konnte nicht geladen werden: " + safeMessage(exception));
@@ -71,20 +72,21 @@ public final class RpProjectManager {
                 feedback.accept("Projektordner konnte nicht gelesen werden: " + safeMessage(exception));
                 return;
             }
+            try { refreshCombined(); }
+            catch (Exception exception) { failed++; RPMODClient.LOGGER.warn("Could not rebuild combined RPMOD pack", exception); }
             feedback.accept("RPMOD-Sync abgeschlossen: " + updated + " Projekt(e) geprüft, " + failed + " Fehler.");
         });
     }
 
     public static void leave(String code, Consumer<String> feedback) {
         if (!validCode(code)) { feedback.accept("Ungültiger Share-Code."); return; }
-        Path pack = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory()
-            .resolve("RPMOD_" + code + ".zip");
-        MinecraftClientActions.deactivate(code, () -> {
+        Thread.startVirtualThread(() -> {
             try {
-                Files.deleteIfExists(pack);
                 deleteTree(RPMODClient.projectsDirectory.resolve(code));
-                feedback.accept("Projekt " + code + " wurde entfernt.");
-            } catch (IOException exception) {
+                Files.deleteIfExists(net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory().resolve("RPMOD_" + code + ".zip"));
+                refreshCombined();
+                feedback.accept("Projekt " + code + " wurde entfernt. Die übrigen Projekte bleiben aktiv.");
+            } catch (Exception exception) {
                 feedback.accept("Projekt konnte nicht vollständig entfernt werden: " + safeMessage(exception));
             }
         });
@@ -109,9 +111,7 @@ public final class RpProjectManager {
         if (!matcher.find()) throw new IOException("Manifest enthält keinen gültigen packHash");
         String newHash = matcher.group(1);
 
-        Path resourcePacks = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory();
-        Files.createDirectories(resourcePacks);
-        Path pack = resourcePacks.resolve("RPMOD_" + code + ".zip");
+        Path pack = projectDirectory.resolve("pack.zip");
         boolean changed = force || !newHash.equals(oldHash) || !Files.exists(pack);
         if (changed) {
             String packUrl = apiBase + "/api/projects/" + code + "/pack.zip";
@@ -131,7 +131,14 @@ public final class RpProjectManager {
             }
         }
         Files.writeString(manifestFile, manifestResponse.body());
-        if (changed) MinecraftClientActions.activate(code);
+        AnvilRecipeStore.reload();
+    }
+
+    private static void refreshCombined() throws IOException {
+        AnvilRecipeStore.reload();
+        String combinedPack = CombinedPackBuilder.rebuild();
+        if (combinedPack == null) MinecraftClientActions.deactivateCombined(() -> {});
+        else MinecraftClientActions.activateCombined(combinedPack);
     }
 
     private static boolean validCode(String code) { return CODE.matcher(code).matches(); }
