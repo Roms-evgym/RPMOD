@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "rpmod",
-  "version": "\${version}",
+  "version": "${version}",
   "name": "RPMOD",
   "description": "Shared custom resource-pack projects and anvil crafting helper.",
   "authors": ["RPMOD"],
