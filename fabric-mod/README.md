@@ -7,6 +7,6 @@ Initial client-only bootstrap for Minecraft 26.3. It creates a private local pro
 - Java 25
 - Fabric Loader 0.20.1
 - Fabric Loom 1.19-SNAPSHOT
-- Gradle 9.6
+- Gradle 9.9.1
 
-Build with a Java 25 JDK and Gradle 9.6+: `gradle build`.
+Build with a Java 25 JDK and Gradle 9.9.1+: `gradle build`.
