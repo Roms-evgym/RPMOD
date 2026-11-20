@@ -1,6 +1,5 @@
 package de.rpmod;
 
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -9,6 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.net.URI;
+import java.awt.Desktop;
 
 public final class RpGuiScreen extends Screen {
     private EditBox projectName;
@@ -84,8 +84,13 @@ public final class RpGuiScreen extends Screen {
     private void openWeb() {
         String url = RpProjectManager.getWebEditorUrl();
         if (!createdCode.isBlank()) url += "?code=" + createdCode;
-        Util.getPlatform().openUri(URI.create(url));
-        status = "Web-Editor wurde im Browser geöffnet.";
+        try {
+            if (!Desktop.isDesktopSupported()) throw new IllegalStateException("Desktop-Browser ist nicht verfügbar");
+            Desktop.getDesktop().browse(URI.create(url));
+            status = "Web-Editor wurde im Browser geöffnet.";
+        } catch (Exception exception) {
+            status = "Browser konnte nicht geöffnet werden: " + exception.getMessage();
+        }
     }
 
     private void setStatus(String value) {
@@ -93,7 +98,7 @@ public final class RpGuiScreen extends Screen {
     }
 
     @Override
-    protected void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         graphics.centeredText(this.font, "RPMOD · RESOURCE PACK STUDIO", this.width / 2, 18, 0xFF9DF36A);
         graphics.centeredText(this.font, status, this.width / 2, this.height - 30, 0xFFFFFFFF);
