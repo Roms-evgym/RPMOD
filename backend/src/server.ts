@@ -30,7 +30,8 @@ const itemSchema = z.object({
   baseItemName: z.string().trim().min(1).max(80),
   renameTrigger: z.string().trim().min(1).max(80),
   category: z.enum(["weapon", "tool", "food", "decoration", "other"]).default("other"),
-  iconBase64: z.string().max(8_000_000).optional()
+  iconBase64: z.string().max(8_000_000).optional(),
+  modelJson: z.string().max(200_000).optional()
 });
 
 app.post("/api/projects/:shareCode/items", async (req, res) => {
