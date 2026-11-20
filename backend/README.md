@@ -36,7 +36,7 @@ The API listens on port `8787` by default. Set `PORT` to change it.
 
 ## Resource-pack output
 
-The ZIP contains `pack.mcmeta` for resource pack format 97.1 (Minecraft 26.3), plus an item definition, generated item model and PNG texture for each item under the `rpmod` namespace. It also includes `rpmod-give-commands.txt` with test commands that set the `minecraft:item_model` component on the selected base item.
+The ZIP contains `pack.mcmeta` for resource pack format 97.1 (Minecraft 26.3), plus a project-scoped item definition, generated item model and PNG texture for each item under the `rpmod` namespace. A vanilla item definition uses the `minecraft:component` select property on `minecraft:custom_name`, mapping the exact anvil rename trigger to that item's model while preserving a fallback to the base item. The ZIP also includes `rpmod-give-commands.txt` with direct test commands that set the `minecraft:item_model` component.
 
 The manifest's SHA-256 `packHash` changes when project items or their texture data change. Edit tokens are returned only at project creation; only their SHA-256 hashes are stored.
 
