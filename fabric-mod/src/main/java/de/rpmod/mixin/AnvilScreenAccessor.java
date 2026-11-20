@@ -7,6 +7,8 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(AnvilScreen.class)
 public interface AnvilScreenAccessor {
-    @Accessor("name")
-    EditBox rpmod$getName();
+    @Accessor("name") EditBox rpmod$getName();
+    @Accessor("leftPos") int rpmod$getLeftPos();
+    @Accessor("topPos") int rpmod$getTopPos();
+    @Accessor("imageWidth") int rpmod$getImageWidth();
 }
