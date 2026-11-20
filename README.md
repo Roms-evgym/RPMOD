@@ -14,10 +14,11 @@ Implemented and CI-verified:
 - Build a Three.js cuboid model with editable coordinates and a live 3D preview.
 - Export item definitions, custom models and textures into a Minecraft 26.3 resource-pack ZIP.
 - Run `/rp join <SHARECODE>`, `/rp sync`, `/rp leave <SHARECODE>` and `/rp help` in the Fabric client.
-- Automatically select downloaded packs in Minecraft and reload resources when packs change.
+- Merge multiple joined projects into one collision-safe local pack, then automatically activate and reload it.
+- Show a searchable anvil sidebar with base/result previews; clicking a row checks inventory, inserts one base item and sets the exact rename trigger.
 - Automated backend tests verify ZIP structure, metadata, PNG output and 3D model export.
 
-Not yet implemented: the advanced UV pixel painter, full Blockbench import/export workflow, Anvil-screen recipe sidebar, in-game project GUI and multi-version 26.1/26.2 builds.
+Not yet implemented: the advanced UV pixel painter, full Blockbench import/export workflow, in-game project GUI and multi-version 26.1/26.2 builds.
 
 ## Components
 
