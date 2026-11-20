@@ -117,7 +117,7 @@ export default function ModelEditor({ onModelChange }: Props) {
     const modelGroup = new THREE.Group();
     const t = transform;
     modelGroup.rotation.set(THREE.MathUtils.degToRad(t.rotation[0]), THREE.MathUtils.degToRad(t.rotation[1]), THREE.MathUtils.degToRad(t.rotation[2]));
-    modelGroup.position.set(t.translation[0] / 4, t.translation[1] / 4, t.translation[2] / 4);
+    modelGroup.position.set(t.translation[0], t.translation[1], t.translation[2]);
     modelGroup.scale.set(...t.scale);
     scene.add(modelGroup);
     const meshes: THREE.Mesh[] = [];
