@@ -53,3 +53,44 @@ test("exports a valid Minecraft Java 26.3 resource pack", async () => {
     rmSync(join("storage", shareCode), { recursive: true, force: true });
   }
 });
+
+test("exports saved 3D cuboids with the project's texture id", async () => {
+  const shareCode = "RPM-TEST02";
+  const zipPath = join("storage", shareCode, "pack.zip");
+  const modelJson = JSON.stringify({
+    parent: "minecraft:block/block",
+    textures: { "0": "rpmod:item/__texture__", particle: "rpmod:item/__texture__" },
+    elements: [{
+      from: [4, 3, 4],
+      to: [12, 13, 12],
+      faces: {
+        north: { uv: [0, 0, 16, 16], texture: "#0" },
+        south: { uv: [0, 0, 16, 16], texture: "#0" },
+        east: { uv: [0, 0, 16, 16], texture: "#0" },
+        west: { uv: [0, 0, 16, 16], texture: "#0" },
+        up: { uv: [0, 0, 16, 16], texture: "#0" },
+        down: { uv: [0, 0, 16, 16], texture: "#0" }
+      }
+    }]
+  });
+  const manifest = {
+    shareCode, name: "3D Model Test", packHash: "1".repeat(64), packFormat: 97.1,
+    gameVersions: ["26.3"],
+    customItems: [{
+      id: "cube-item", baseItem: "minecraft:paper", baseItemName: "Papier",
+      renameTrigger: "Cube", category: "decoration", modelJson
+    }]
+  };
+
+  try {
+    await buildPack(manifest);
+    const model = JSON.parse(execFileSync("unzip", ["-p", zipPath, "assets/rpmod/models/item/cube-item.json"], { encoding: "utf8" }));
+    assert.equal(model.parent, "minecraft:block/block");
+    assert.equal(model.elements.length, 1);
+    assert.deepEqual(model.elements[0].from, [4, 3, 4]);
+    assert.equal(model.textures["0"], "rpmod:item/cube-item");
+    assert.equal(model.textures.particle, "rpmod:item/cube-item");
+  } finally {
+    rmSync(join("storage", shareCode), { recursive: true, force: true });
+  }
+});
