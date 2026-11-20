@@ -10,6 +10,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Properties;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -79,11 +81,17 @@ public final class RpProjectManager {
         if (!validCode(code)) { feedback.accept("Ungültiger Share-Code."); return; }
         Thread.startVirtualThread(() -> {
             try {
-                Path pack = net.minecraft.client.Minecraft.getInstance().gameDirectory.toPath()
-                    .resolve("resourcepacks").resolve("RPMOD_" + code + ".zip");
-                Files.deleteIfExists(pack);
-                deleteTree(RPMODClient.projectsDirectory.resolve(code));
-                feedback.accept("Projekt " + code + " lokal entfernt. Falls aktiv, deaktiviere es in den Ressourcenpaketen.");
+                Path pack = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory()
+                    .resolve("RPMOD_" + code + ".zip");
+                MinecraftClientActions.deactivate(code, () -> {
+                    try {
+                        Files.deleteIfExists(pack);
+                        deleteTree(RPMODClient.projectsDirectory.resolve(code));
+                        feedback.accept("Projekt " + code + " wurde entfernt.");
+                    } catch (IOException exception) {
+                        feedback.accept("Projekt konnte nicht vollständig entfernt werden: " + safeMessage(exception));
+                    }
+                });
             } catch (IOException exception) {
                 feedback.accept("Projekt konnte nicht entfernt werden: " + safeMessage(exception));
             }
@@ -109,10 +117,11 @@ public final class RpProjectManager {
         if (!matcher.find()) throw new IOException("Manifest enthält keinen gültigen packHash");
         String newHash = matcher.group(1);
 
-        Path resourcePacks = net.minecraft.client.Minecraft.getInstance().gameDirectory.toPath().resolve("resourcepacks");
+        Path resourcePacks = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory();
         Files.createDirectories(resourcePacks);
         Path pack = resourcePacks.resolve("RPMOD_" + code + ".zip");
-        if (force || !newHash.equals(oldHash) || !Files.exists(pack)) {
+        boolean changed = force || !newHash.equals(oldHash) || !Files.exists(pack);
+        if (changed) {
             String packUrl = apiBase + "/api/projects/" + code + "/pack.zip";
             HttpResponse<byte[]> packResponse = HTTP.send(
                 HttpRequest.newBuilder(URI.create(packUrl)).timeout(Duration.ofSeconds(60)).GET().build(),
@@ -126,6 +135,7 @@ public final class RpProjectManager {
             Files.move(temporary, pack, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         }
         Files.writeString(manifestFile, manifestResponse.body());
+        if (changed) MinecraftClientActions.activate(code);
     }
 
     private static boolean validCode(String code) { return CODE.matcher(code).matches(); }
