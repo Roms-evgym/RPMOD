@@ -27,7 +27,8 @@ The API listens on port `8787` by default. Set `PORT` to change it.
   "baseItemName": "Stock",
   "renameTrigger": "Rubinstab",
   "category": "weapon",
-  "iconBase64": "data:image/png;base64,..."
+  "iconBase64": "data:image/png;base64,...",
+  "modelJson": "{...}"
 }
 ```
 
