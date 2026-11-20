@@ -1,0 +1,23 @@
+name: Fabric build
+on:
+  push:
+    paths: ['fabric-mod/**']
+  pull_request:
+    paths: ['fabric-mod/**']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fabric-mod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6'
+      - run: gradle build
