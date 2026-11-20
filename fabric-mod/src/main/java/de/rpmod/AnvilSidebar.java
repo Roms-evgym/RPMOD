@@ -1,6 +1,7 @@
 package de.rpmod;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.EditBox;
 import de.rpmod.mixin.AnvilScreenAccessor;
 import de.rpmod.mixin.AbstractContainerScreenAccessor;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,18 +18,35 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public final class AnvilSidebar {
     private static final int PANEL_WIDTH = 142;
     private static final int ROW_HEIGHT = 34;
-    private static final int FIRST_ROW_Y = 29;
+    private static final int FIRST_ROW_Y = 50;
+    private static final Map<AnvilScreen, EditBox> SEARCH_BOXES = new WeakHashMap<>();
     private static final int VISIBLE_ROWS = 4;
 
     private AnvilSidebar() {}
 
+    public static void initSearch(AnvilScreen screen) {
+        AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+        int x = accessor.rpmod$getLeftPos() + localPanelX(screen) + 8;
+        int y = accessor.rpmod$getTopPos() + 30;
+        EditBox box = new EditBox(screen.getFont(), x, y, PANEL_WIDTH - 16, 14, Component.literal("RPMOD Suche"));
+        box.setMaxLength(48);
+        screen.addRenderableWidget(box);
+        SEARCH_BOXES.put(screen, box);
+    }
+
+    public static void renderSearch(AnvilScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        EditBox box = SEARCH_BOXES.get(screen);
+        if (box != null) box.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
     public static void render(AnvilScreen screen, GuiGraphicsExtractor graphics) {
-        List<AnvilRecipeStore.Recipe> recipes = AnvilRecipeStore.getRecipes();
-        if (recipes.isEmpty()) return;
+        List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
 
         int x = localPanelX(screen);
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
@@ -36,7 +54,11 @@ public final class AnvilSidebar {
         graphics.fill(x, 0, x + PANEL_WIDTH, height, 0xE8111A29);
         graphics.outline(x, 0, PANEL_WIDTH, height, 0xFF40536D);
         graphics.text(screen.getFont(), "RPMOD · ITEMS", x + 8, 7, 0xFF9DF36A);
-        graphics.text(screen.getFont(), recipes.size() + " Rezept(e)", x + 8, 18, 0xFF93A4BB);
+        graphics.text(screen.getFont(), recipes.size() + " Treffer", x + 8, 18, 0xFF93A4BB);
+        if (recipes.isEmpty()) {
+            graphics.text(screen.getFont(), "Keine Items gefunden", x + 8, 53, 0xFF91A2B9);
+            return;
+        }
 
         for (int i = 0; i < rows; i++) {
             AnvilRecipeStore.Recipe recipe = recipes.get(i);
@@ -60,14 +82,15 @@ public final class AnvilSidebar {
     }
 
     public static boolean handleClick(AnvilScreen screen, double mouseX, double mouseY) {
-        List<AnvilRecipeStore.Recipe> recipes = AnvilRecipeStore.getRecipes();
-        if (recipes.isEmpty()) return false;
+        List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
+        if (AnvilRecipeStore.getRecipes().isEmpty()) return false;
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int x = accessor.rpmod$getLeftPos() + localPanelX(screen);
         int y = accessor.rpmod$getTopPos();
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
         int height = FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
         if (mouseX < x || mouseX >= x + PANEL_WIDTH || mouseY < y || mouseY >= y + height) return false;
+        if (mouseX >= x + 8 && mouseX <= x + PANEL_WIDTH - 8 && mouseY >= y + 30 && mouseY <= y + 46) return false;
         int row = (int) ((mouseY - y - FIRST_ROW_Y) / ROW_HEIGHT);
         if (row >= 0 && row < rows) autofill(screen, recipes.get(row));
         return true;
@@ -132,9 +155,21 @@ public final class AnvilSidebar {
 
     private static int localPanelX(AnvilScreen screen) {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+        int left = accessor.rpmod$getLeftPos();
         int right = accessor.rpmod$getImageWidth() + 8;
-        if (accessor.rpmod$getLeftPos() + right + PANEL_WIDTH > screen.width - 4) return -PANEL_WIDTH - 8;
+        if (left + right + PANEL_WIDTH > screen.width - 4) return Math.max(6, left - PANEL_WIDTH - 8) - left;
         return right;
+    }
+
+    private static List<AnvilRecipeStore.Recipe> filteredRecipes(AnvilScreen screen) {
+        EditBox box = SEARCH_BOXES.get(screen);
+        String query = box == null ? "" : box.getValue().trim().toLowerCase();
+        if (query.isEmpty()) return AnvilRecipeStore.getRecipes();
+        return AnvilRecipeStore.getRecipes().stream().filter(recipe ->
+            recipe.renameTrigger().toLowerCase().contains(query)
+                || recipe.baseItemName().toLowerCase().contains(query)
+                || recipe.id().toLowerCase().contains(query)
+        ).toList();
     }
 
     private static String trim(AnvilScreen screen, String value, int maxWidth) {
