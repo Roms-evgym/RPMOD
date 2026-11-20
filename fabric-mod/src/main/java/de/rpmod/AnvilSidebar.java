@@ -88,7 +88,7 @@ public final class AnvilSidebar {
 
         Item baseItem;
         try {
-            baseItem = BuiltInRegistries.ITEM.get(Identifier.parse(recipe.baseItem()));
+            baseItem = BuiltInRegistries.ITEM.get(Identifier.parse(recipe.baseItem())).map(reference -> reference.value()).orElse(net.minecraft.world.item.Items.AIR);
         } catch (Exception exception) {
             player.sendSystemMessage(Component.literal("RPMOD: Ungültiges Basis-Item: " + recipe.baseItem()));
             return;
@@ -122,7 +122,7 @@ public final class AnvilSidebar {
 
     private static ItemStack createBaseStack(String itemId) {
         try {
-            Item item = BuiltInRegistries.ITEM.get(Identifier.parse(itemId));
+            Item item = BuiltInRegistries.ITEM.get(Identifier.parse(itemId)).map(reference -> reference.value()).orElse(net.minecraft.world.item.Items.AIR);
             return new ItemStack(item);
         } catch (Exception ignored) {
             return ItemStack.EMPTY;
