@@ -22,3 +22,9 @@ jobs:
           gradle-version: '9.9.1'
       - name: Build Fabric mod
         run: gradle build --no-daemon
+      - name: Upload mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpmod-fabric-0.1.0-mc26.3
+          path: fabric-mod/build/libs/rpmod-0.1.0.jar
+          if-no-files-found: error
