@@ -20,7 +20,7 @@ public final class RpProjectManager {
     private static final Pattern HASH = Pattern.compile("\\\"packHash\\\"\\s*:\\s*\\\"([a-f0-9]{64})\\\"", Pattern.CASE_INSENSITIVE);
     private static final HttpClient HTTP = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build();
-    private static String apiBase = "http://localhost:8787";
+    private static String apiBase = "https://rpmod-api-w0h8.onrender.com";
 
     private RpProjectManager() {}
 
@@ -45,6 +45,35 @@ public final class RpProjectManager {
         }
         apiBase = configured.replaceAll("/+$", "");
         RPMODClient.LOGGER.info("RPMOD API endpoint: {}", apiBase);
+    }
+
+
+    public record CreatedProject(String shareCode, String editToken, String name) {}
+
+    public static void createProject(String name, Consumer<CreatedProject> success, Consumer<String> failure) {
+        Thread.startVirtualThread(() -> {
+            try {
+                String body = "{\\"name\\":\\"" + name.replace("\\\\", "\\\\\\\\").replace("\\\"", "\\\\\\"") + "\\"}";
+                HttpResponse<String> response = HTTP.send(
+                    HttpRequest.newBuilder(URI.create(apiBase + "/api/projects"))
+                        .timeout(Duration.ofSeconds(30))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+                    HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 201) throw new IOException("API antwortete mit HTTP " + response.statusCode());
+                Matcher code = Pattern.compile("\\\"shareCode\\\"\\s*:\\s*\\\"(RPM-[A-F0-9]{6})\\\"").matcher(response.body());
+                Matcher token = Pattern.compile("\\\"editToken\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(response.body());
+                if (!code.find() || !token.find()) throw new IOException("API-Antwort enthält keinen Share-Code oder Edit-Token");
+                success.accept(new CreatedProject(code.group(1), token.group(1), name));
+            } catch (Exception exception) {
+                RPMODClient.LOGGER.error("Could not create RPMOD project", exception);
+                failure.accept(safeMessage(exception));
+            }
+        });
+    }
+
+    public static String getWebEditorUrl() {
+        return "https://roms-evgym.github.io/RPMOD/";
     }
 
     public static void join(String code, Consumer<String> feedback) {
