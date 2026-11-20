@@ -1,0 +1,1 @@
+Fabric client bootstrap CI marker. This triggers the first Minecraft 26.3 Gradle build against the committed configuration.
