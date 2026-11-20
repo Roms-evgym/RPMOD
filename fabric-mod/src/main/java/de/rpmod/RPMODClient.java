@@ -19,6 +19,7 @@ public final class RPMODClient implements ClientModInitializer {
         try {
             java.nio.file.Files.createDirectories(projectsDirectory);
             RpProjectManager.loadConfig(configDirectory);
+            AnvilRecipeStore.reload();
             RPMODCommands.register();
             LOGGER.info("RPMOD client initialized. Project cache: {}", projectsDirectory);
         } catch (java.io.IOException exception) {
