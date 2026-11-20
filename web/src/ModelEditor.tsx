@@ -12,7 +12,7 @@ export type CuboidPart = {
 };
 
 type DisplayTransform = { rotation: [number, number, number]; translation: [number, number, number]; scale: [number, number, number] };
-type ViewKey = "first" | "third" | "armor" | "inventory" | "itemframe" | "shelf";
+type ViewKey = "first" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf";
 type Props = { onModelChange: (json: string) => void };
 
 const initialParts: CuboidPart[] = [
@@ -29,7 +29,7 @@ const defaults: Record<string, DisplayTransform> = {
 const viewConfig: Record<ViewKey, { label: string; context: keyof typeof defaults; camera: [number, number, number]; target: [number, number, number] }> = {
   first: { label: "First Person", context: "firstperson_righthand", camera: [15, 11, 19], target: [0, 0, 0] },
   third: { label: "Third Person", context: "thirdperson_righthand", camera: [19, 13, 23], target: [0, 0, 0] },
-  armor: { label: "Rüstung / Kopf", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
+  helmet: { label: "Helm", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  chestplate: { label: "Brustplatte", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  leggings: { label: "Beinschutz", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },\n  boots: { label: "Stiefel", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
   inventory: { label: "Inventar", context: "gui", camera: [18, 16, 22], target: [0, 0, 0] },
   itemframe: { label: "Item Frame", context: "fixed", camera: [0, 0, 28], target: [0, 0, 0] },
   shelf: { label: "Regal", context: "gui", camera: [18, 14, 23], target: [0, 0, 0] }
@@ -107,7 +107,7 @@ export default function ModelEditor({ onModelChange }: Props) {
       shelf.position.set(0, -7, -1.5);
       scene.add(shelf);
     }
-    if (view === "armor") {
+    if (view === "helmet" || view === "chestplate" || view === "leggings" || view === "boots") {
       const ghost = new THREE.Group();
       const mat = new THREE.MeshStandardMaterial({ color: 0x73839a, transparent: true, opacity: .22 });
       const torso = new THREE.Mesh(new THREE.BoxGeometry(8, 10, 4), mat); torso.position.y = -9;
@@ -227,7 +227,7 @@ export default function ModelEditor({ onModelChange }: Props) {
             {(["X", "Y", "Z"] as const).map((axis, index) => <label key={axis}>{axis}<input type="number" step={field === "scale" ? .05 : .1} value={transform[field][index]} onChange={event => updateTransform(field, index as 0 | 1 | 2, Number(event.target.value))}/></label>)}
           </div>)}
         </div>
-        <p className="model-hint">First/Third Person, Kopf-Rüstung, Inventar und Item-Frame verwenden die jeweiligen Minecraft-Display-Transforms. Die Regalvorschau nutzt die GUI-Darstellung; die tatsächliche Regal-Inszenierung hängt vom Minecraft-Renderer ab.</p>
+        <p className="model-hint">First/Third Person, die vier Rüstungsteil-Vorschauen, Inventar-GUI und Item-Frame verwenden die passenden Editor-Ansichten. Die Rüstungsteil-Vorschauen markieren Helm, Brustplatte, Beinschutz und Stiefel am Mannequin; Minecraft-Rüstungsmodelle benötigen zusätzlich eigene Armor-Modelle und Texturen. Die Regalvorschau nutzt die GUI-Darstellung; die tatsächliche Regal-Inszenierung hängt vom Minecraft-Renderer ab.</p>
       </div>
     </div>
   </section>;
