@@ -107,10 +107,12 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
     ];
     for (const item of manifest.customItems) {
       const id = safeFileName(item.id);
-      const modelId = `rpmod:${id}`;
+      const projectPrefix = manifest.shareCode.toLowerCase();
+      const modelId = `rpmod:${projectPrefix}/${id}`;
+      const textureId = `rpmod:item/${projectPrefix}/${id}`;
       archive.append(JSON.stringify({
         model: { type: "minecraft:model", model: modelId }
-      }, null, 2) + "\n", { name: `assets/rpmod/items/${id}.json` });
+      }, null, 2) + "\n", { name: `assets/rpmod/items/${projectPrefix}/${id}.json` });
       let model: Record<string, unknown>;
       if (item.modelJson) {
         try {
@@ -119,17 +121,17 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
           throw new Error(`Das 3D-Modell für "${id}" enthält ungültiges JSON.`);
         }
         if (!Array.isArray(model.elements)) throw new Error(`Das 3D-Modell für "${id}" benötigt ein elements-Array.`);
-        const textureId = `rpmod:item/${id}`;
         const oldTextures = model.textures && typeof model.textures === "object" ? model.textures as Record<string, unknown> : {};
         model.textures = Object.fromEntries(Object.keys(oldTextures).map(key => [key, textureId]));
         (model.textures as Record<string, unknown>)["0"] = textureId;
         (model.textures as Record<string, unknown>).particle = textureId;
       } else {
-        model = { parent: "minecraft:item/generated", textures: { layer0: `rpmod:item/${id}` } };
+        model = { parent: "minecraft:item/generated", textures: { layer0: textureId } };
       }
-      archive.append(JSON.stringify(model, null, 2) + "\n", { name: `assets/rpmod/models/item/${id}.json` });
-      archive.append(itemTexture(item), { name: `assets/rpmod/textures/item/${id}.png` });
-      commands.push(`/give @p ${item.baseItem}[minecraft:item_model="${modelId}"] 1  # ${item.renameTrigger}`);
+      archive.append(JSON.stringify(model, null, 2) + "\n", { name: `assets/rpmod/models/item/${projectPrefix}/${id}.json` });
+      archive.append(itemTexture(item), { name: `assets/rpmod/textures/item/${projectPrefix}/${id}.png` });
+      commands.push(`# ${item.renameTrigger} · ${item.baseItemName}`);
+      commands.push(`/give @p ${item.baseItem}[minecraft:item_model="${modelId}"] 1`);
     }
     archive.append(commands.join("\n") + "\n", { name: "rpmod-give-commands.txt" });
     archive.finalize().catch((error: Error) => fail(error));
