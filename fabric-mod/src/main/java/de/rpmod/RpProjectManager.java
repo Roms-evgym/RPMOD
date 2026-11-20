@@ -10,8 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Properties;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,7 +45,7 @@ public final class RpProjectManager {
         Thread.startVirtualThread(() -> {
             try {
                 syncOne(code, true);
-                feedback.accept("Projekt " + code + " heruntergeladen. Aktiviere RPMOD_" + code + ".zip unter Optionen > Ressourcenpakete.");
+                feedback.accept("Projekt " + code + " wurde heruntergeladen und automatisch aktiviert.");
             } catch (Exception exception) {
                 RPMODClient.LOGGER.error("Could not join RPMOD project {}", code, exception);
                 feedback.accept("Projekt konnte nicht geladen werden: " + safeMessage(exception));
@@ -79,21 +77,15 @@ public final class RpProjectManager {
 
     public static void leave(String code, Consumer<String> feedback) {
         if (!validCode(code)) { feedback.accept("Ungültiger Share-Code."); return; }
-        Thread.startVirtualThread(() -> {
+        Path pack = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory()
+            .resolve("RPMOD_" + code + ".zip");
+        MinecraftClientActions.deactivate(code, () -> {
             try {
-                Path pack = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory()
-                    .resolve("RPMOD_" + code + ".zip");
-                MinecraftClientActions.deactivate(code, () -> {
-                    try {
-                        Files.deleteIfExists(pack);
-                        deleteTree(RPMODClient.projectsDirectory.resolve(code));
-                        feedback.accept("Projekt " + code + " wurde entfernt.");
-                    } catch (IOException exception) {
-                        feedback.accept("Projekt konnte nicht vollständig entfernt werden: " + safeMessage(exception));
-                    }
-                });
+                Files.deleteIfExists(pack);
+                deleteTree(RPMODClient.projectsDirectory.resolve(code));
+                feedback.accept("Projekt " + code + " wurde entfernt.");
             } catch (IOException exception) {
-                feedback.accept("Projekt konnte nicht entfernt werden: " + safeMessage(exception));
+                feedback.accept("Projekt konnte nicht vollständig entfernt werden: " + safeMessage(exception));
             }
         });
     }
@@ -132,7 +124,11 @@ public final class RpProjectManager {
                 bytes[0] != 'P' || bytes[1] != 'K') throw new IOException("Die heruntergeladene ZIP-Datei ist ungültig oder zu groß");
             Path temporary = pack.resolveSibling(pack.getFileName() + ".tmp");
             Files.write(temporary, bytes);
-            Files.move(temporary, pack, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(temporary, pack, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, pack, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
         Files.writeString(manifestFile, manifestResponse.body());
         if (changed) MinecraftClientActions.activate(code);
