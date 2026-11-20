@@ -53,7 +53,7 @@ public final class RpProjectManager {
     public static void createProject(String name, Consumer<CreatedProject> success, Consumer<String> failure) {
         Thread.startVirtualThread(() -> {
             try {
-                String body = "{\\"name\\":\\"" + name.replace("\\\\", "\\\\\\\\").replace("\\\"", "\\\\\\"") + "\\"}";
+                String body = "{\\"name\\":\\"" + escapeJson(name) + "\\"}";
                 HttpResponse<String> response = HTTP.send(
                     HttpRequest.newBuilder(URI.create(apiBase + "/api/projects"))
                         .timeout(Duration.ofSeconds(30))
@@ -70,6 +70,13 @@ public final class RpProjectManager {
                 failure.accept(safeMessage(exception));
             }
         });
+    }
+
+    private static String escapeJson(String value) {
+        return value.replace("\\\\", "\\\\\\\\")
+            .replace("\\\"", "\\\\\"")
+            .replace("\\n", "\\\\n")
+            .replace("\\r", "\\\\r");
     }
 
     public static String getWebEditorUrl() {
