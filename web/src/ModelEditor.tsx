@@ -31,7 +31,6 @@ function makeModel(parts: CuboidPart[]) {
     ambientocclusion: true,
     textures: { "0": "rpmod:item/__texture__", particle: "rpmod:item/__texture__" },
     elements: parts.map(part => ({
-      name: part.name,
       from: part.from,
       to: part.to,
       faces
@@ -182,7 +181,7 @@ export default function ModelEditor({ onModelChange }: Props) {
   }
 
   function addPart() {
-    const id = "cube-" + (parts.length + 1);
+    const id = "cube-" + crypto.randomUUID().slice(0, 8);
     setParts(current => [...current, { id, name: "Würfel " + (current.length + 1), from: [5, 5, 5], to: [11, 11, 11], color: "#9df36a" }]);
     setSelectedId(id);
   }
