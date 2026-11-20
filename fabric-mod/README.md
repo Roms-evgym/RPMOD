@@ -1,12 +1,26 @@
 # RPMOD Fabric client
 
-Initial client-only bootstrap for Minecraft 26.3. It creates a private local project cache directory and logs startup. Join/leave commands, async manifest sync, resource reload, menu integration and the anvil sidebar are staged features and are not implemented in this bootstrap yet.
+Client-only Fabric mod for Minecraft Java 26.3.
 
 ## Toolchain
 - Minecraft 26.3
 - Java 25
 - Fabric Loader 0.20.1
+- Fabric API 0.166.0+26.3
 - Fabric Loom 1.19-SNAPSHOT
 - Gradle 9.9.1
 
 Build with a Java 25 JDK and Gradle 9.9.1+: `gradle build`.
+
+## Commands
+
+- `/rp join <SHARECODE>` — downloads the project's manifest and ZIP into the active Minecraft instance.
+- `/rp sync` — checks every locally joined project and downloads changed packs.
+- `/rp leave <SHARECODE>` — removes that project's local pack and cached manifest.
+- `/rp help` — prints the command list.
+
+The mod writes its settings to `.minecraft/config/rpmod/config.properties`. Set `apiBase` to the public base URL of your RPMOD backend (without a trailing slash). The default is `http://localhost:8787`, intended only when the API is running on the same computer.
+
+Downloaded ZIPs are saved in the current Minecraft instance's `resourcepacks/` folder as `RPMOD_<SHARECODE>.zip`. The current command version does not enable packs automatically yet: open Options → Resource Packs and move the downloaded pack to Selected. If a pack changes later, run `/rp sync`, then press F3+T or reopen the resource pack screen to reload it.
+
+The current sync client verifies the share-code format, checks the manifest's SHA-256 pack hash, limits downloaded ZIPs to 64 MiB, writes to a temporary file and then replaces the previous ZIP.
