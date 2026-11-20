@@ -18,6 +18,8 @@ public final class RPMODClient implements ClientModInitializer {
         projectsDirectory = configDirectory.resolve("projects");
         try {
             java.nio.file.Files.createDirectories(projectsDirectory);
+            RpProjectManager.loadConfig(configDirectory);
+            RPMODCommands.register();
             LOGGER.info("RPMOD client initialized. Project cache: {}", projectsDirectory);
         } catch (java.io.IOException exception) {
             LOGGER.error("Could not create RPMOD project cache directory", exception);
