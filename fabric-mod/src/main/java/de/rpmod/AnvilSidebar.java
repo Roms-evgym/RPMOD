@@ -2,6 +2,7 @@ package de.rpmod;
 
 import net.minecraft.client.Minecraft;
 import de.rpmod.mixin.AnvilScreenAccessor;
+import de.rpmod.mixin.AbstractContainerScreenAccessor;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AnvilScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -61,7 +62,7 @@ public final class AnvilSidebar {
     public static boolean handleClick(AnvilScreen screen, double mouseX, double mouseY) {
         List<AnvilRecipeStore.Recipe> recipes = AnvilRecipeStore.getRecipes();
         if (recipes.isEmpty()) return false;
-        AnvilScreenAccessor accessor = (AnvilScreenAccessor) screen;
+        AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int x = accessor.rpmod$getLeftPos() + localPanelX(screen);
         int y = accessor.rpmod$getTopPos();
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
@@ -130,7 +131,7 @@ public final class AnvilSidebar {
     }
 
     private static int localPanelX(AnvilScreen screen) {
-        AnvilScreenAccessor accessor = (AnvilScreenAccessor) screen;
+        AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int right = accessor.rpmod$getImageWidth() + 8;
         if (accessor.rpmod$getLeftPos() + right + PANEL_WIDTH > screen.width - 4) return -PANEL_WIDTH - 8;
         return right;
