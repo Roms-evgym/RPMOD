@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ModelEditor from "./ModelEditor";
 import TexturePainter from "./TexturePainter";
 import { Box, FolderPlus, Link2, Package, Plus, RefreshCw, Trash2, Copy } from "lucide-react";
@@ -10,7 +10,8 @@ const API = (import.meta.env.VITE_RPMOD_API ?? "https://rpmod-api-w0h8.onrender.
 export default function App() {
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState("Mein Resource Pack");
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(() => new URLSearchParams(window.location.search).get("code") ?? "");
+  const [editTokenInput, setEditTokenInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Erstelle ein Projekt oder trete einem bestehenden Projekt bei.");
   const [itemId, setItemId] = useState("meine-krone");
@@ -34,17 +35,22 @@ export default function App() {
     finally { setBusy(false); }
   }
 
-  async function join() {
+  async function join(projectCode = code) {
     setBusy(true);
     try {
-      const response = await fetch(API + "/api/projects/" + encodeURIComponent(code.trim().toUpperCase()) + "/manifest");
+      const response = await fetch(API + "/api/projects/" + encodeURIComponent(projectCode.trim().toUpperCase()) + "/manifest");
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Projekt nicht gefunden");
-      setProject({ ...data, editToken: "" });
-      setMessage("Projekt geladen. Zum Bearbeiten brauchst du den Edit-Token des Projekts.");
+      setProject({ ...data, editToken: editTokenInput.trim() });
+      setMessage(editTokenInput.trim() ? "Projekt geladen. Du kannst es bearbeiten." : "Projekt geladen. Zum Bearbeiten kannst du den Edit-Token einfügen.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Projekt konnte nicht geladen werden"); }
     finally { setBusy(false); }
   }
+
+  useEffect(() => {
+    const initialCode = new URLSearchParams(window.location.search).get("code");
+    if (initialCode) void join(initialCode);
+  }, []);
 
   async function addItem() {
     if (!project?.editToken) return;
@@ -81,7 +87,7 @@ export default function App() {
   return <main className="shell"><header><div className="brand"><div className="logo"><Box /></div><div><strong>RPMOD</strong><span>RESOURCE PACK STUDIO</span></div></div><div className="status"><i /> API-Workspace</div></header>
     <section className="hero"><div className="eyebrow">MINECRAFT RESOURCE PACK WORKSPACE</div><h1>Deine Items.<br/><em>Dein Pack.</em></h1><p>Erstelle eigene Minecraft-Items, bearbeite Modelle im 3D-Editor und teile dein Resource Pack mit anderen.</p></section>
     <section className="workspace"><div className="panel"><div className="panel-title"><FolderPlus/><h2>Neues Projekt</h2></div><label>Projektname</label><input value={name} onChange={e=>setName(e.target.value)} maxLength={80}/><button onClick={create} disabled={busy || !name.trim()}><Plus size={18}/> Projekt erstellen</button></div>
-    <div className="panel"><div className="panel-title"><Link2/><h2>Projekt beitreten</h2></div><label>Share-Code</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="RPM-A1B2C3"/><button className="secondary" onClick={join} disabled={busy || !code.trim()}><RefreshCw size={18}/> Beitreten</button></div></section>
+    <div className="panel"><div className="panel-title"><Link2/><h2>Projekt beitreten</h2></div><label>Share-Code</label><input value={code} onChange={e=>setCode(e.target.value)} placeholder="RPM-A1B2C3"/><label>Edit-Token (für Schreibzugriff, optional)</label><input value={editTokenInput} onChange={e=>{setEditTokenInput(e.target.value);setProject(current=>current?{...current,editToken:e.target.value.trim()}:current);}} placeholder="Edit-Token einfügen"/><button className="secondary" onClick={()=>join()} disabled={busy || !code.trim()}><RefreshCw size={18}/> Beitreten</button></div></section>
     {message && <p className="message">{message}</p>}
     {project && <><section className="project"><div><span className="eyebrow">AKTIVES PROJEKT</span><h2>{project.name}</h2><code>{project.shareCode}</code></div><div className="project-actions"><button onClick={()=>navigator.clipboard.writeText(project.shareCode)}><Link2 size={16}/> Code kopieren</button><a href={API + "/api/projects/" + project.shareCode + "/pack.zip"}><Package size={16}/> Pack ZIP</a></div></section>
       {project.editToken && <section className="panel token-panel"><div><span className="eyebrow">PRIVATER EDIT-TOKEN</span><p>Nur für Projekt-Admins. Nicht öffentlich teilen.</p><code>{project.editToken}</code></div><button className="secondary" onClick={()=>navigator.clipboard.writeText(project.editToken)}><Copy size={16}/> Token kopieren</button></section>}
