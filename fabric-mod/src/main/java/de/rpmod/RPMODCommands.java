@@ -1,7 +1,7 @@
 package de.rpmod;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -46,7 +46,7 @@ public final class RPMODCommands {
     private static void message(String text) {
         Minecraft.getInstance().execute(() -> {
             if (Minecraft.getInstance().player != null) {
-                Minecraft.getInstance().player.displayClientMessage(Component.literal(text), false);
+                Minecraft.getInstance().player.sendSystemMessage(Component.literal(text));
             }
         });
     }
