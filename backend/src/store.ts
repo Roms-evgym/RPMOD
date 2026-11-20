@@ -6,7 +6,7 @@ import { join } from "node:path";
 export type ItemCategory = "weapon" | "tool" | "food" | "decoration" | "other";
 export type CustomItem = {
   id: string; baseItem: string; baseItemName: string; renameTrigger: string;
-  category: ItemCategory; iconBase64?: string; modelPath: string; texturePath: string;
+  category: ItemCategory; iconBase64?: string; modelJson?: string; modelPath: string; texturePath: string;
 };
 export type ProjectManifest = {
   shareCode: string; name: string; packHash: string; packFormat: number;
