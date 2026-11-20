@@ -133,6 +133,30 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
       commands.push(`# ${item.renameTrigger} · ${item.baseItemName}`);
       commands.push(`/give @p ${item.baseItem}[minecraft:item_model="${modelId}"] 1`);
     }
+    const byBaseItem = new Map<string, CustomItem[]>();
+    for (const item of manifest.customItems) {
+      const list = byBaseItem.get(item.baseItem) ?? [];
+      list.push(item);
+      byBaseItem.set(item.baseItem, list);
+    }
+    for (const [baseItem, items] of byBaseItem) {
+      const [namespace, ...pathParts] = baseItem.includes(":") ? baseItem.split(":") : ["minecraft", baseItem];
+      const path = pathParts.join(":");
+      const cases = items.map(item => ({
+        when: { text: item.renameTrigger },
+        model: { type: "minecraft:model", model: `rpmod:item/${manifest.shareCode.toLowerCase()}/${safeFileName(item.id)}` }
+      }));
+      const definition = {
+        model: {
+          type: "minecraft:select",
+          property: "minecraft:component",
+          component: "minecraft:custom_name",
+          cases,
+          fallback: { type: "minecraft:model", model: `${namespace}:item/${path}` }
+        }
+      };
+      archive.append(JSON.stringify(definition, null, 2) + "\\n", { name: `assets/${namespace}/items/${path}.json` });
+    }
     archive.append(commands.join("\n") + "\n", { name: "rpmod-give-commands.txt" });
     archive.finalize().catch((error: Error) => fail(error));
   });
