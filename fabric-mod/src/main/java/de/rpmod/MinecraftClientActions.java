@@ -17,7 +17,7 @@ final class MinecraftClientActions {
             repository.reload();
             String id = "file/RPMOD_" + code + ".zip";
             if (!repository.isAvailable(id)) {
-                if (client.player != null) client.player.displayClientMessage(
+                if (client.player != null) client.player.sendSystemMessage(
                     Component.literal("RPMOD: ZIP wurde gespeichert, Minecraft hat das Pack aber nicht erkannt: " + id));
                 return;
             }
@@ -25,8 +25,8 @@ final class MinecraftClientActions {
             selected.add(id);
             repository.setSelected(selected);
             client.options.updateResourcePacks(repository);
-            if (client.player != null) client.player.displayClientMessage(
-                Component.literal("RPMOD: " + code + " wurde aktiviert. Ressourcen werden neu geladen."), false);
+            if (client.player != null) client.player.sendSystemMessage(
+                Component.literal("RPMOD: " + code + " wurde aktiviert. Ressourcen werden neu geladen."));
         });
     }
 
