@@ -5,7 +5,7 @@ import { Box, FolderPlus, Link2, Package, Plus, RefreshCw, Trash2, Copy } from "
 
 type CustomItem = { id: string; baseItem: string; baseItemName: string; renameTrigger: string; category: string; iconBase64?: string; modelJson?: string };
 type Project = { shareCode: string; name: string; editToken: string; customItems: CustomItem[] };
-const API = import.meta.env.VITE_RPMOD_API ?? "http://localhost:8787";
+const API = (import.meta.env.VITE_RPMOD_API ?? "https://rpmod-api-w0h8.onrender.com").replace(/\/+$/, "");
 
 export default function App() {
   const [project, setProject] = useState<Project | null>(null);
