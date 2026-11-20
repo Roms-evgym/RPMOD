@@ -57,6 +57,9 @@ export function addCustomItem(code: string, item: Omit<CustomItem, "modelPath" |
   const manifest = getManifest(code);
   if (!manifest) return undefined;
   if (manifest.customItems.some(existing => existing.id === item.id)) throw new Error("An item with this id already exists");
+  if (manifest.customItems.some(existing => existing.baseItem === item.baseItem && existing.renameTrigger.toLocaleLowerCase() === item.renameTrigger.toLocaleLowerCase())) {
+    throw new Error("This rename trigger is already used for the selected base item");
+  }
   manifest.customItems.push({
     ...item,
     modelPath: `rpmod:item/${code.toLowerCase()}/${item.id}`,
