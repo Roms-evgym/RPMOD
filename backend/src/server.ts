@@ -21,7 +21,6 @@ app.post("/api/projects", async (req, res) => {
 app.get("/api/projects/:shareCode/manifest", (req, res) => {
   const manifest = getManifest(req.params.shareCode.toUpperCase());
   if (!manifest) return res.status(404).json({ error: "Project not found" });
-  await buildPack(manifest);
   return res.json(manifest);
 });
 
@@ -56,6 +55,7 @@ app.delete("/api/projects/:shareCode/items/:itemId", async (req, res) => {
   if (!canEdit(code, token)) return res.status(403).json({ error: "Invalid edit token" });
   const manifest = removeCustomItem(code, req.params.itemId);
   if (!manifest) return res.status(404).json({ error: "Project not found" });
+  await buildPack(manifest);
   return res.json(manifest);
 });
 
