@@ -61,8 +61,9 @@ public final class AnvilSidebar {
     public static boolean handleClick(AnvilScreen screen, double mouseX, double mouseY) {
         List<AnvilRecipeStore.Recipe> recipes = AnvilRecipeStore.getRecipes();
         if (recipes.isEmpty()) return false;
-        int x = screen.getLeftPos() + localPanelX(screen);
-        int y = screen.getTopPos();
+        AnvilScreenAccessor accessor = (AnvilScreenAccessor) screen;
+        int x = accessor.rpmod$getLeftPos() + localPanelX(screen);
+        int y = accessor.rpmod$getTopPos();
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
         int height = FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
         if (mouseX < x || mouseX >= x + PANEL_WIDTH || mouseY < y || mouseY >= y + height) return false;
@@ -129,8 +130,9 @@ public final class AnvilSidebar {
     }
 
     private static int localPanelX(AnvilScreen screen) {
-        int right = screen.getImageWidth() + 8;
-        if (screen.getLeftPos() + right + PANEL_WIDTH > screen.width - 4) return -PANEL_WIDTH - 8;
+        AnvilScreenAccessor accessor = (AnvilScreenAccessor) screen;
+        int right = accessor.rpmod$getImageWidth() + 8;
+        if (accessor.rpmod$getLeftPos() + right + PANEL_WIDTH > screen.width - 4) return -PANEL_WIDTH - 8;
         return right;
     }
 
