@@ -62,7 +62,12 @@ public final class CombinedPackBuilder {
                         JsonObject match = new JsonObject();
                         match.add("when", when);
                         match.add("model", model);
-                        cases.add(match);
+                        boolean duplicateTrigger = false;
+                        for (int i = 0; i < cases.size(); i++) {
+                            String existing = cases.get(i).getAsJsonObject().getAsJsonObject("when").get("text").getAsString();
+                            if (existing.equalsIgnoreCase(trigger)) { duplicateTrigger = true; break; }
+                        }
+                        if (!duplicateTrigger) cases.add(match);
                         fallbackByBaseItem.put(assetPath, namespace + ":item/" + itemPath);
                         itemCount++;
                     }
