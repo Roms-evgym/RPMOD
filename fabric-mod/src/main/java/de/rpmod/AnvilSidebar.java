@@ -35,6 +35,7 @@ public final class AnvilSidebar {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int x = accessor.rpmod$getLeftPos() + localPanelX(screen) + 8;
         int y = accessor.rpmod$getTopPos() + 30;
+        ((AnvilScreenAccessor) screen).rpmod$getName().setCanLoseFocus(true);
         EditBox box = new EditBox(screen.getFont(), x, y, PANEL_WIDTH - 16, 14, Component.literal("RPMOD Suche"));
         box.setMaxLength(48);
         ((ScreenAccessor) screen).rpmod$addRenderableWidget(box);
