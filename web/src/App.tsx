@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, FolderPlus, Link2, Package, Plus, RefreshCw, Trash2, Copy } from "lucide-react";
 
-type CustomItem = { id: string; baseItem: string; baseItemName: string; renameTrigger: string; category: string };
+type CustomItem = { id: string; baseItem: string; baseItemName: string; renameTrigger: string; category: string; iconBase64?: string };
 type Project = { shareCode: string; name: string; editToken: string; customItems: CustomItem[] };
 const API = import.meta.env.VITE_RPMOD_API ?? "http://localhost:8787";
 
@@ -16,6 +16,8 @@ export default function App() {
   const [baseItemName, setBaseItemName] = useState("Geschnitzter Kürbis");
   const [renameTrigger, setRenameTrigger] = useState("Krone");
   const [category, setCategory] = useState("decoration");
+  const [iconBase64, setIconBase64] = useState("");
+  const [textureName, setTextureName] = useState("");
 
   async function create() {
     setBusy(true);
@@ -48,7 +50,7 @@ export default function App() {
       const response = await fetch(API + "/api/projects/" + project.shareCode + "/items", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-rpmod-edit-token": project.editToken },
-        body: JSON.stringify({ id: itemId, baseItem, baseItemName, renameTrigger, category })
+        body: JSON.stringify({ id: itemId, baseItem, baseItemName, renameTrigger, category, ...(iconBase64 ? { iconBase64 } : {}) })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Item konnte nicht gespeichert werden");
@@ -80,7 +82,7 @@ export default function App() {
     {message && <p className="message">{message}</p>}
     {project && <><section className="project"><div><span className="eyebrow">AKTIVES PROJEKT</span><h2>{project.name}</h2><code>{project.shareCode}</code></div><div className="project-actions"><button onClick={()=>navigator.clipboard.writeText(project.shareCode)}><Link2 size={16}/> Code kopieren</button><a href={API + "/api/projects/" + project.shareCode + "/pack.zip"}><Package size={16}/> Pack ZIP</a></div></section>
       {project.editToken && <section className="panel token-panel"><div><span className="eyebrow">PRIVATER EDIT-TOKEN</span><p>Nur für Projekt-Admins. Nicht öffentlich teilen.</p><code>{project.editToken}</code></div><button className="secondary" onClick={()=>navigator.clipboard.writeText(project.editToken)}><Copy size={16}/> Token kopieren</button></section>}
-      <section className="editor-grid"><div className="panel"><div className="panel-title"><Plus/><h2>Eigenes Item hinzufügen</h2></div><label>Interne ID</label><input value={itemId} onChange={e=>setItemId(e.target.value)} placeholder="meine-krone"/><label>Basis-Item (Minecraft-ID)</label><input value={baseItem} onChange={e=>setBaseItem(e.target.value)} placeholder="minecraft:carved_pumpkin"/><label>Name des Basis-Items</label><input value={baseItemName} onChange={e=>setBaseItemName(e.target.value)}/><label>Umbenennen auf (Amboss)</label><input value={renameTrigger} onChange={e=>setRenameTrigger(e.target.value)}/><label>Kategorie</label><select value={category} onChange={e=>setCategory(e.target.value)}><option value="decoration">Dekoration</option><option value="weapon">Waffe</option><option value="tool">Werkzeug</option><option value="food">Essen</option><option value="other">Sonstiges</option></select><button onClick={addItem} disabled={busy || !project.editToken || !itemId.trim() || !renameTrigger.trim()}><Plus size={18}/> Item speichern</button>{!project.editToken && <p className="hint">Du bist dem Projekt nur als Gast beigetreten. Ein Edit-Token ist zum Speichern nötig.</p>}</div>
+      <section className="editor-grid"><div className="panel"><div className="panel-title"><Plus/><h2>Eigenes Item hinzufügen</h2></div><label>Interne ID</label><input value={itemId} onChange={e=>setItemId(e.target.value)} placeholder="meine-krone"/><label>Basis-Item (Minecraft-ID)</label><input value={baseItem} onChange={e=>setBaseItem(e.target.value)} placeholder="minecraft:carved_pumpkin"/><label>Name des Basis-Items</label><input value={baseItemName} onChange={e=>setBaseItemName(e.target.value)}/><label>Umbenennen auf (Amboss)</label><input value={renameTrigger} onChange={e=>setRenameTrigger(e.target.value)}/><label>PNG-Textur (optional, max. 5 MB)</label><input type="file" accept="image/png" onChange={e=>{const file=e.target.files?.[0];if(!file)return;if(file.size>5*1024*1024){setMessage("PNG ist zu groß (maximal 5 MB).");e.target.value="";return;}const reader=new FileReader();reader.onload=()=>{setIconBase64(String(reader.result));setTextureName(file.name);};reader.readAsDataURL(file);}}/>{textureName && <div className="texture-preview"><img src={iconBase64} alt="Texturvorschau"/><span>{textureName}</span><button type="button" className="text-button" onClick={()=>{setIconBase64("");setTextureName("");}}>Entfernen</button></div>}<label>Kategorie</label><select value={category} onChange={e=>setCategory(e.target.value)}><option value="decoration">Dekoration</option><option value="weapon">Waffe</option><option value="tool">Werkzeug</option><option value="food">Essen</option><option value="other">Sonstiges</option></select><button onClick={addItem} disabled={busy || !project.editToken || !itemId.trim() || !renameTrigger.trim()}><Plus size={18}/> Item speichern</button>{!project.editToken && <p className="hint">Du bist dem Projekt nur als Gast beigetreten. Ein Edit-Token ist zum Speichern nötig.</p>}</div>
       <div className="panel item-list"><div className="panel-title"><Package/><h2>Projekt-Items ({project.customItems?.length ?? 0})</h2></div>{project.customItems?.length ? project.customItems.map(item=><article className="item-row" key={item.id}><div><strong>{item.renameTrigger}</strong><small>{item.baseItemName} · {item.id}</small></div>{project.editToken && <button className="icon-button" title="Item löschen" onClick={()=>deleteItem(item.id)} disabled={busy}><Trash2 size={16}/></button>}</article>) : <p className="hint">Noch keine Items gespeichert. Lege links dein erstes Item an.</p>}</div></section>
     </>}
     <footer>RPMOD <span>•</span> Frühe Entwicklungsfassung · 3D-Editor, Pack-Export und Anvil-Assistent folgen</footer></main>;
