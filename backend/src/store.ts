@@ -59,8 +59,8 @@ export function addCustomItem(code: string, item: Omit<CustomItem, "modelPath" |
   if (manifest.customItems.some(existing => existing.id === item.id)) throw new Error("An item with this id already exists");
   manifest.customItems.push({
     ...item,
-    modelPath: `rpmod:item/${item.id}`,
-    texturePath: `rpmod:item/${item.id}`
+    modelPath: `rpmod:item/${code.toLowerCase()}/${item.id}`,
+    texturePath: `rpmod:item/${code.toLowerCase()}/${item.id}`
   });
   persist(manifest);
   return manifest;
