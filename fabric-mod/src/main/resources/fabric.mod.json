@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "rpmod",
+  "version": "\${version}",
+  "name": "RPMOD",
+  "description": "Shared custom resource-pack projects and anvil crafting helper.",
+  "authors": ["RPMOD"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["de.rpmod.RPMODClient"] },
+  "depends": { "fabricloader": ">=0.19.0", "minecraft": "26.3", "java": ">=25", "fabric-api": "*" }
+}
