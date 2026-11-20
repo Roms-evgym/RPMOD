@@ -107,6 +107,7 @@ public final class CombinedPackBuilder {
         Path resourcePacks = net.minecraft.client.Minecraft.getInstance().getResourcePackDirectory();
         Files.createDirectories(resourcePacks);
         Path target = resourcePacks.resolve(fileName);
+        if (Files.exists(target)) return fileName;
         Path temporary = target.resolveSibling(fileName + ".tmp");
 
         JsonObject pack = new JsonObject();
