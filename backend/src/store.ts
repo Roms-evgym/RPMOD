@@ -34,7 +34,7 @@ export function createProject(name: string) {
   while (db.prepare("SELECT 1 FROM projects WHERE share_code=?").get(shareCode)) shareCode = makeCode();
   const editToken = randomBytes(32).toString("base64url");
   const manifest: ProjectManifest = {
-    shareCode, name, packHash: "", packFormat: 97, gameVersions: ["26.3"], customItems: []
+    shareCode, name, packHash: "", packFormat: 97.1, gameVersions: ["26.3"], customItems: []
   };
   manifest.packHash = hash(JSON.stringify({ ...manifest, packHash: "" }));
   db.prepare("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)").run(
