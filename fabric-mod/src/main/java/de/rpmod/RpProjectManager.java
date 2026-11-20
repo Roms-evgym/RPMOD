@@ -53,7 +53,7 @@ public final class RpProjectManager {
     public static void createProject(String name, Consumer<CreatedProject> success, Consumer<String> failure) {
         Thread.startVirtualThread(() -> {
             try {
-                String body = "{\\"name\\":\\"" + escapeJson(name) + "\\"}";
+                String body = "{\"name\":\"" + escapeJson(name) + "\"}";
                 HttpResponse<String> response = HTTP.send(
                     HttpRequest.newBuilder(URI.create(apiBase + "/api/projects"))
                         .timeout(Duration.ofSeconds(30))
