@@ -73,10 +73,10 @@ public final class RpProjectManager {
     }
 
     private static String escapeJson(String value) {
-        return value.replace("\\\\", "\\\\\\\\")
-            .replace("\\\"", "\\\\\"")
-            .replace("\\n", "\\\\n")
-            .replace("\\r", "\\\\r");
+        return value.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r");
     }
 
     public static String getWebEditorUrl() {
