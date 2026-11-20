@@ -155,7 +155,7 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
           fallback: { type: "minecraft:model", model: `${namespace}:item/${path}` }
         }
       };
-      archive.append(JSON.stringify(definition, null, 2) + "\\n", { name: `assets/${namespace}/items/${path}.json` });
+      archive.append(JSON.stringify(definition, null, 2) + "\n", { name: `assets/${namespace}/items/${path}.json` });
     }
     archive.append(commands.join("\n") + "\n", { name: "rpmod-give-commands.txt" });
     archive.finalize().catch((error: Error) => fail(error));
