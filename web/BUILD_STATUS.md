@@ -1,0 +1,1 @@
+Web build is configured through GitHub Actions. The first CI run was queued before the npm cache path was corrected; this marker triggers a clean run against the current workflow.
