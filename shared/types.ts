@@ -7,6 +7,7 @@ export interface CustomItem {
   renameTrigger: string;
   category: ItemCategory;
   iconBase64?: string;
+  modelJson?: string;
   modelPath: string;
   texturePath: string;
 }
