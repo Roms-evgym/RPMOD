@@ -25,6 +25,12 @@ public final class RPMODCommands {
                             RpProjectManager.join(code, RPMODCommands::message);
                             return 1;
                         })))
+                .then(ClientCommands.literal("reload")
+                    .executes(context -> {
+                        context.getSource().sendFeedback(Component.literal("RPMOD: Lade bestätigte Updates ..."));
+                        RpProjectManager.reloadPendingUpdates(RPMODCommands::message);
+                        return 1;
+                    }))
                 .then(ClientCommands.literal("sync")
                     .executes(context -> {
                         context.getSource().sendFeedback(Component.literal("RPMOD: Synchronisiere deine Projekte ..."));
