@@ -110,7 +110,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     paintPixel(x, y, true);
   }
 
-  function paintPixel(x: number, y: number, publish: boolean, face: FaceKey = selectedFace) {
+  function paintPixel(x: number, y: number, publish: boolean, face: FaceKey = selectedFace, partId = selected?.id) {
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -126,16 +126,16 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     ctx.fillStyle = paintColor;
     ctx.fillRect(px, py, 1, 1);
     ctx.globalCompositeOperation = "source-over";
-    if (publish) publishTexture(face);
+    if (publish) publishTexture(face, partId);
   }
 
-  function publishTexture(face: FaceKey = selectedFace) {
+  function publishTexture(face: FaceKey = selectedFace, partId = selected?.id) {
     const canvas = textureCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     lastEmittedTexture.current = dataUrl;
-    if (!selected) onTextureChange(dataUrl);
-    else setFaceTextures(current => ({ ...current, [selected.id]: { ...(current[selected.id] ?? {}), [face]: dataUrl } }));
+    if (!partId) onTextureChange(dataUrl);
+    else setFaceTextures(current => ({ ...current, [partId]: { ...(current[partId] ?? {}), [face]: dataUrl } }));
   }
   function clearTexture() {
     const canvas = textureCanvasRef.current;
@@ -270,7 +270,9 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let painting3d = false;
+    let paintingReady = false;
     let paintingFace: FaceKey = selectedFace;
+    let paintingPartId = selectedId;
     const hitModel = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -285,21 +287,40 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       if (event.button === 0 && hit.uv) {
         const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
         const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south";
+        const partId = String(hit.object.userData.partId ?? "");
         setSelectedFace(face);
         paintingFace = face;
+        paintingPartId = partId;
         painting3d = true;
+        paintingReady = false;
         controls.enabled = false;
-        paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face);
+        const canvas = textureCanvasRef.current;
+        const ctx = canvas?.getContext("2d");
+        const source = faceTextures[partId]?.[face] || textureDataUrl;
+        if (ctx) {
+          ctx.clearRect(0, 0, 16, 16);
+          const paintStart = () => {
+            if (!painting3d) return;
+            paintingReady = true;
+            paintPixel(hit.uv!.x * 16, (1 - hit.uv!.y) * 16, false, face, partId);
+          };
+          if (source) {
+            const image = new Image();
+            image.onload = () => { ctx.clearRect(0, 0, 16, 16); ctx.imageSmoothingEnabled = false; ctx.drawImage(image, 0, 0, 16, 16); paintStart(); };
+            image.src = source;
+          } else paintStart();
+        }
       }
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (!painting3d || paintTool === "picker") return;
+      if (!painting3d || !paintingReady || paintTool === "picker") return;
       const hit = hitModel(event);
-      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintingFace = face; paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face); }
+      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintingFace = face; paintingFace = face; paintingPartId = String(hit.object.userData.partId ?? ""); paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, paintingPartId); }
     };
     const onPointerUp = () => {
-      if (painting3d) publishTexture(paintingFace);
+      if (painting3d && paintingReady) publishTexture(paintingFace, paintingPartId);
       painting3d = false;
+      paintingReady = false;
       controls.enabled = true;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
