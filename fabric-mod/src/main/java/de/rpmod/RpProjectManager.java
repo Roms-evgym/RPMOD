@@ -98,15 +98,26 @@ public final class RpProjectManager {
     }
 
     public static void syncAll(Consumer<String> feedback) {
+        syncAll(feedback, false);
+    }
+
+    public static void checkForUpdates() {
+        syncAll(message -> RPMODClient.LOGGER.info(message), true);
+    }
+
+    private static void syncAll(Consumer<String> feedback, boolean quiet) {
         Thread.startVirtualThread(() -> {
-            int updated = 0;
+            int checked = 0;
+            int changed = 0;
             int failed = 0;
             try (Stream<Path> projects = Files.list(RPMODClient.projectsDirectory)) {
                 for (Path directory : projects.filter(Files::isDirectory).toList()) {
                     String code = directory.getFileName().toString();
                     if (!validCode(code)) continue;
-                    try { syncOne(code, false); updated++; }
-                    catch (Exception exception) {
+                    try {
+                        checked++;
+                        if (syncOne(code, false)) changed++;
+                    } catch (Exception exception) {
                         failed++;
                         RPMODClient.LOGGER.warn("Could not sync RPMOD project {}", code, exception);
                     }
@@ -115,9 +126,17 @@ public final class RpProjectManager {
                 feedback.accept("Projektordner konnte nicht gelesen werden: " + safeMessage(exception));
                 return;
             }
-            try { refreshCombined(); }
-            catch (Exception exception) { failed++; RPMODClient.LOGGER.warn("Could not rebuild combined RPMOD pack", exception); }
-            feedback.accept("RPMOD-Sync abgeschlossen: " + updated + " Projekt(e) geprüft, " + failed + " Fehler.");
+            if (changed > 0) {
+                try {
+                    refreshCombined();
+                    RPMODClient.LOGGER.info("Automatically installed updates for {} RPMOD project(s).", changed);
+                } catch (Exception exception) {
+                    failed++;
+                    RPMODClient.LOGGER.warn("Could not rebuild combined RPMOD pack", exception);
+                }
+            }
+            String summary = "RPMOD-Updateprüfung: " + checked + " Projekt(e) geprüft, " + changed + " aktualisiert, " + failed + " Fehler.";
+            if (!quiet || changed > 0 || failed > 0) feedback.accept(summary);
         });
     }
 
@@ -135,7 +154,7 @@ public final class RpProjectManager {
         });
     }
 
-    private static void syncOne(String code, boolean force) throws Exception {
+    private static boolean syncOne(String code, boolean force) throws Exception {
         Path projectDirectory = RPMODClient.projectsDirectory.resolve(code);
         Files.createDirectories(projectDirectory);
         Path manifestFile = projectDirectory.resolve("manifest.json");
@@ -174,7 +193,8 @@ public final class RpProjectManager {
             }
         }
         Files.writeString(manifestFile, manifestResponse.body());
-        AnvilRecipeStore.reload();
+        if (changed) AnvilRecipeStore.reload();
+        return changed;
     }
 
     private static void refreshCombined() throws IOException {
