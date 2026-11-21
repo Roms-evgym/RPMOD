@@ -130,7 +130,7 @@ public final class RpProjectManager {
                 return;
             }
             String summary = "RPMOD-Updateprüfung: " + checked + " Projekt(e) geprüft, " + changed + " Update(s) bereit, " + failed + " Fehler."; 
-            if (changed > 0 && quiet) {
+            if (changed > 0) {
                 Minecraft.getInstance().execute(() -> {
                     if (Minecraft.getInstance().player != null) {
                         var prompt = net.minecraft.network.chat.Component.literal("RPMOD: ")
