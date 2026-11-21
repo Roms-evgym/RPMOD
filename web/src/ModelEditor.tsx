@@ -12,8 +12,8 @@ export type CuboidPart = {
 };
 
 type DisplayTransform = { rotation: [number, number, number]; translation: [number, number, number]; scale: [number, number, number] };
-type ViewKey = "first" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf";
-type Props = { onModelChange: (json: string) => void };
+type ViewKey = "first" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf" | "ground";
+type Props = { onModelChange: (json: string) => void; textureDataUrl?: string };
 
 const initialParts: CuboidPart[] = [
   { id: "body", name: "Hauptteil", from: [4, 3, 4], to: [12, 13, 12], color: "#9df36a" }
@@ -24,7 +24,7 @@ const defaults: Record<string, DisplayTransform> = {
   head: { rotation: [0, 180, 0], translation: [0, 13, 7], scale: [1, 1, 1] },
   gui: { rotation: [30, 225, 0], translation: [0, 0, 0], scale: [.625, .625, .625] },
   fixed: { rotation: [0, 180, 0], translation: [0, 0, 0], scale: [.5, .5, .5] },
-  ground: { rotation: [0, 0, 0], translation: [0, 2, 0], scale: [.25, .25, .25] }
+  ground: { rotation: [0, 0, 0], translation: [0, 0, 0], scale: [.25, .25, .25] }
 };
 const viewConfig: Record<ViewKey, { label: string; context: keyof typeof defaults; camera: [number, number, number]; target: [number, number, number] }> = {
   first: { label: "First Person", context: "firstperson_righthand", camera: [15, 11, 19], target: [0, 0, 0] },
@@ -35,7 +35,8 @@ const viewConfig: Record<ViewKey, { label: string; context: keyof typeof default
   boots: { label: "Stiefel", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
   inventory: { label: "Inventar", context: "gui", camera: [18, 16, 22], target: [0, 0, 0] },
   itemframe: { label: "Item Frame", context: "fixed", camera: [0, 0, 28], target: [0, 0, 0] },
-  shelf: { label: "Regal", context: "gui", camera: [18, 14, 23], target: [0, 0, 0] }
+  shelf: { label: "Regal", context: "gui", camera: [18, 14, 23], target: [0, 0, 0] },
+  ground: { label: "Auf dem Boden", context: "ground", camera: [17, 5, 20], target: [0, -1, 0] }
 };
 
 function makeModel(parts: CuboidPart[], transforms: Record<string, DisplayTransform>) {
@@ -58,7 +59,7 @@ function makeModel(parts: CuboidPart[], transforms: Record<string, DisplayTransf
   };
 }
 
-export default function ModelEditor({ onModelChange }: Props) {
+export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [parts, setParts] = useState<CuboidPart[]>(initialParts);
   const [selectedId, setSelectedId] = useState("body");
@@ -98,7 +99,7 @@ export default function ModelEditor({ onModelChange }: Props) {
     fillLight.position.set(-16, 4, -12);
     scene.add(fillLight);
     const grid = new THREE.GridHelper(32, 16, 0x53647d, 0x263449);
-    grid.position.y = -8.05;
+    grid.position.y = view === "ground" ? -2.05 : -8.05;
     scene.add(grid);
     if (view === "itemframe") {
       const frame = new THREE.Mesh(new THREE.BoxGeometry(19, 19, 1), new THREE.MeshStandardMaterial({ color: 0x80552f, roughness: .9 }));
@@ -129,7 +130,9 @@ export default function ModelEditor({ onModelChange }: Props) {
       const height = Math.max(.1, part.to[1] - part.from[1]);
       const depth = Math.max(.1, part.to[2] - part.from[2]);
       const geometry = new THREE.BoxGeometry(width, height, depth);
-      const material = new THREE.MeshStandardMaterial({ color: part.color, roughness: .72, metalness: .04 });
+      const itemTexture = textureDataUrl ? new THREE.TextureLoader().load(textureDataUrl) : null;
+      if (itemTexture) { itemTexture.magFilter = THREE.NearestFilter; itemTexture.minFilter = THREE.NearestFilter; itemTexture.colorSpace = THREE.SRGBColorSpace; }
+      const material = new THREE.MeshStandardMaterial({ color: itemTexture ? 0xffffff : part.color, map: itemTexture, roughness: .72, metalness: .04 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set((part.from[0] + part.to[0]) / 2 - 8, (part.from[1] + part.to[1]) / 2 - 8, (part.from[2] + part.to[2]) / 2 - 8);
       mesh.userData.partId = part.id;
@@ -202,11 +205,11 @@ export default function ModelEditor({ onModelChange }: Props) {
   const viewButtons: { key: ViewKey; icon: typeof Smartphone }[] = [
     { key: "first", icon: Smartphone }, { key: "third", icon: UserRound },
     { key: "helmet", icon: Shield }, { key: "chestplate", icon: Shield }, { key: "leggings", icon: Shield }, { key: "boots", icon: Shield },
-    { key: "inventory", icon: Package }, { key: "itemframe", icon: Frame }, { key: "shelf", icon: PanelsTopLeft }
+    { key: "inventory", icon: Package }, { key: "itemframe", icon: Frame }, { key: "shelf", icon: PanelsTopLeft }, { key: "ground", icon: Box }
   ];
 
   return <section className="model-editor">
-    <div className="model-editor-heading"><div className="panel-title"><Box/><h2>3D-Modell-Editor</h2></div><span className="model-hint">Blockbench-inspirierte Ansichten · 16 × 16 × 16</span></div>
+    <div className="model-editor-heading"><div className="panel-title"><Box/><h2>Item-Studio · Textur &amp; Modell</h2></div><span className="model-hint">Gemeinsame Vorschau · 16 × 16 × 16</span></div>
     <div className="model-view-tabs">{viewButtons.map(({ key, icon: Icon }) => <button type="button" key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><Icon size={14}/>{viewConfig[key].label}</button>)}</div>
     <div className="model-editor-layout">
       <div className="model-viewport" ref={mountRef}><div className="viewport-help">Ziehen: drehen · Scrollen: zoomen · Ansicht: {active.label}</div></div>
