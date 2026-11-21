@@ -47,7 +47,7 @@ public final class AnvilSidebar {
 
     public static void renderSearch(AnvilScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         EditBox box = SEARCH_BOXES.get(screen);
-        if (box != null) box.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        if (box != null && !COLLAPSED.contains(screen)) box.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
     public static void render(AnvilScreen screen, GuiGraphicsExtractor graphics) {
