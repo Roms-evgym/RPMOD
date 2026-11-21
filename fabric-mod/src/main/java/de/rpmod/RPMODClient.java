@@ -5,6 +5,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public final class RPMODClient implements ClientModInitializer {
     public static final String MOD_ID = "rpmod";
@@ -21,7 +23,15 @@ public final class RPMODClient implements ClientModInitializer {
             RpProjectManager.loadConfig(configDirectory);
             AnvilRecipeStore.reload();
             RPMODCommands.register();
-            LOGGER.info("RPMOD client initialized. Project cache: {}", projectsDirectory);
+            Executors.newSingleThreadScheduledExecutor(task -> {
+                Thread thread = new Thread(task, "RPMOD-update-checker");
+                thread.setDaemon(true);
+                return thread;
+            }).scheduleWithFixedDelay(
+                RpProjectManager::checkForUpdates,
+                5, 5, TimeUnit.MINUTES
+            );
+            LOGGER.info("RPMOD client initialized. Automatic project update checks every 5 minutes. Cache: {}", projectsDirectory);
         } catch (java.io.IOException exception) {
             LOGGER.error("Could not create RPMOD project cache directory", exception);
         }
