@@ -144,7 +144,7 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
       const [namespace, ...pathParts] = baseItem.includes(":") ? baseItem.split(":") : ["minecraft", baseItem];
       const path = pathParts.join(":");
       const cases = items.map(item => ({
-        when: { text: item.renameTrigger },
+        when: { text: `${manifest.name}:${item.renameTrigger}` },
         model: { type: "minecraft:model", model: `rpmod:item/${manifest.shareCode.toLowerCase()}/${safeFileName(item.id)}` }
       }));
       const definition = {
