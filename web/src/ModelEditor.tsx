@@ -126,10 +126,10 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     ctx.fillStyle = paintColor;
     ctx.fillRect(px, py, 1, 1);
     ctx.globalCompositeOperation = "source-over";
-    if (publish) publishTexture();
+    if (publish) publishTexture(face);
   }
 
-  function publishTexture() {
+  function publishTexture(face: FaceKey = selectedFace) {
     const canvas = textureCanvasRef.current;
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
@@ -270,6 +270,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let painting3d = false;
+    let paintingFace: FaceKey = selectedFace;
     const hitModel = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -285,6 +286,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
         const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south";
         setSelectedFace(face);
+        paintingFace = face;
         painting3d = true;
         controls.enabled = false;
         paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face);
@@ -293,10 +295,10 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const onPointerMove = (event: PointerEvent) => {
       if (!painting3d || paintTool === "picker") return;
       const hit = hitModel(event);
-      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face); }
+      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintingFace = face; paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face); }
     };
     const onPointerUp = () => {
-      if (painting3d) publishTexture();
+      if (painting3d) publishTexture(paintingFace);
       painting3d = false;
       controls.enabled = true;
     };
