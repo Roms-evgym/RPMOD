@@ -326,7 +326,6 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
           ctx.clearRect(0, 0, 16, 16);
           const paintStart = () => {
             if (!painting3d || editorMode !== "paint") return;
-            const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
             const materialIndex = hit.face?.materialIndex ?? 4;
             const targetMaterial = Array.isArray(hit.object.material) ? hit.object.material[materialIndex] : hit.object.material;
             if (targetMaterial instanceof THREE.MeshStandardMaterial) {
