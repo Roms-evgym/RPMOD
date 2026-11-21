@@ -39,3 +39,5 @@
 @media(max-width:760px){.model-editor-layout{grid-template-columns:1fr}.model-tools{grid-column:auto}.model-viewport{height:320px}}
 
 .model-texture-panel select.face-select{width:100%;margin:7px 0 10px;padding:8px;background:#0a111e;border:1px solid #34445d;border-radius:7px;color:#f3f4f6;font:12px Manrope}
+
+.model-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 12px}.model-texture-panel .model-mode-switch button{margin:0;padding:8px 6px;border:1px solid #34445d;border-radius:7px;background:#1b293b;color:#b8c7da;font:700 10px Manrope;cursor:pointer}.model-texture-panel .model-mode-switch button.active{background:#9df36a;border-color:#9df36a;color:#10180d}.model-texture-panel .model-mode-switch button:not(.active):hover{border-color:#8092aa}
