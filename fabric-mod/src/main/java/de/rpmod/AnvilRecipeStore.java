@@ -43,6 +43,7 @@ public final class AnvilRecipeStore {
                         String renameKey = baseItem.toLowerCase() + "|" + renameTrigger.toLowerCase();
                         if (seenRenameKeys.add(renameKey)) recipes.add(new Recipe(
                             code,
+                            projectName,
                             item.get("id").getAsString(),
                             baseItem,
                             item.get("baseItemName").getAsString(),
