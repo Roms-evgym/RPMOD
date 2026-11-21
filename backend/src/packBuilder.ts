@@ -123,9 +123,35 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
         }
         if (!Array.isArray(model.elements)) throw new Error(`Das 3D-Modell für "${id}" benötigt ein elements-Array.`);
         const oldTextures = model.textures && typeof model.textures === "object" ? model.textures as Record<string, unknown> : {};
-        model.textures = Object.fromEntries(Object.keys(oldTextures).map(key => [key, textureId]));
-        (model.textures as Record<string, unknown>)["0"] = textureId;
-        (model.textures as Record<string, unknown>).particle = textureId;
+        const faceData = model.rpmodFaceTextures && typeof model.rpmodFaceTextures === "object"
+          ? model.rpmodFaceTextures as Record<string, Record<string, string>> : {};
+        delete model.rpmodFaceTextures;
+        const resolvedTextures: Record<string, string> = {};
+        for (const [key, value] of Object.entries(oldTextures)) {
+          const match = /^part_([a-z0-9_-]+)_(north|south|east|west|up|down)$/.exec(key);
+          if (!match) {
+            resolvedTextures[key] = textureId;
+            continue;
+          }
+          const [, partId, face] = match;
+          const dataUrl = faceData[partId]?.[face];
+          if (!dataUrl) {
+            resolvedTextures[key] = textureId;
+            continue;
+          }
+          const raw = dataUrl.replace(/^data:image\/png;base64,/, "");
+          const image = Buffer.from(raw, "base64");
+          const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+          if (image.length < 24 || !image.subarray(0, 8).equals(signature)) {
+            throw new Error(`Ungültige Textur für Würfel "${partId}" (Seite: ${face}).`);
+          }
+          const faceTextureId = `rpmod:item/${projectPrefix}/${id}_${partId}_${face}`;
+          resolvedTextures[key] = faceTextureId;
+          archive.append(image, { name: `assets/rpmod/textures/item/${projectPrefix}/${id}_${partId}_${face}.png` });
+        }
+        resolvedTextures["0"] = textureId;
+        resolvedTextures.particle = textureId;
+        model.textures = resolvedTextures;
       } else {
         model = { parent: "minecraft:item/generated", textures: { layer0: textureId } };
       }
