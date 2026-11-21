@@ -271,6 +271,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const pointer = new THREE.Vector2();
     let painting3d = false;
     let paintingReady = false;
+    let pointerReleased = false;
     let paintingFace: FaceKey = selectedFace;
     let paintingPartId = selectedId;
     const hitModel = (event: PointerEvent) => {
@@ -293,6 +294,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         paintingPartId = partId;
         painting3d = true;
         paintingReady = false;
+        pointerReleased = false;
         controls.enabled = false;
         const canvas = textureCanvasRef.current;
         const ctx = canvas?.getContext("2d");
@@ -303,6 +305,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
             if (!painting3d) return;
             paintingReady = true;
             paintPixel(hit.uv!.x * 16, (1 - hit.uv!.y) * 16, false, face, partId);
+            if (pointerReleased) { publishTexture(face, partId); painting3d = false; paintingReady = false; pointerReleased = false; }
           };
           if (source) {
             const image = new Image();
@@ -318,9 +321,11 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintingFace = face; paintingFace = face; paintingPartId = String(hit.object.userData.partId ?? ""); paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, paintingPartId); }
     };
     const onPointerUp = () => {
+      if (painting3d && !paintingReady) { pointerReleased = true; controls.enabled = true; return; }
       if (painting3d && paintingReady) publishTexture(paintingFace, paintingPartId);
       painting3d = false;
       paintingReady = false;
+      pointerReleased = false;
       controls.enabled = true;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
