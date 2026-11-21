@@ -17,6 +17,6 @@ public abstract class AnvilScreenMixin {
 
     @Inject(method = "extractLabels", at = @At("TAIL"))
     private void rpmod$renderSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, CallbackInfo ci) {
-        AnvilSidebar.render((AnvilScreen) (Object) this, graphics);
+        AnvilSidebar.render((AnvilScreen) (Object) this, graphics);\n        AnvilSidebar.renderBookButton((AnvilScreen) (Object) this, graphics, mouseX, mouseY);
     }
 }
