@@ -223,7 +223,9 @@ public final class AnvilSidebar {
         return AnvilRecipeStore.getRecipes().stream().filter(recipe ->
             recipe.renameTrigger().toLowerCase().contains(query)
                 || recipe.baseItemName().toLowerCase().contains(query)
-                || recipe.id().toLowerCase().contains(query)\n                || recipe.shareCode().toLowerCase().contains(query)\n                || recipe.projectName().toLowerCase().contains(query)
+                || recipe.id().toLowerCase().contains(query)
+                || recipe.shareCode().toLowerCase().contains(query)
+                || recipe.projectName().toLowerCase().contains(query)
         ).toList();
     }
 
