@@ -52,8 +52,16 @@ function fallbackTexture(category: CustomItem["category"]): Buffer {
   ]);
 }
 function itemTexture(item: CustomItem): Buffer {
-  if (!item.iconBase64) return fallbackTexture(item.category);
-  const raw = item.iconBase64.replace(/^data:image\/png;base64,/, "");
+  let bundledTexture: string | undefined;
+  if (item.modelJson) {
+    try {
+      const document = JSON.parse(item.modelJson) as Record<string, unknown>;
+      if (typeof document.rpmodItemTexture === "string") bundledTexture = document.rpmodItemTexture;
+    } catch { /* The model validation below reports malformed model JSON. */ }
+  }
+  const source = item.iconBase64 || bundledTexture;
+  if (!source) return fallbackTexture(item.category);
+  const raw = source.replace(/^data:image\/png;base64,/, "");
   const image = Buffer.from(raw, "base64");
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   if (image.length < 24 || !image.subarray(0, 8).equals(signature)) {
@@ -126,6 +134,9 @@ function buildArchive(manifest: ProjectManifest): Promise<void> {
         const faceData = model.rpmodFaceTextures && typeof model.rpmodFaceTextures === "object"
           ? model.rpmodFaceTextures as Record<string, Record<string, string>> : {};
         delete model.rpmodFaceTextures;
+        // The inventory/icon PNG is bundled with the model in the database,
+        // but exported as its normal standalone Minecraft texture file.
+        delete model.rpmodItemTexture;
         const resolvedTextures: Record<string, string> = {};
         for (const [key, value] of Object.entries(oldTextures)) {
           const match = /^part_([a-z0-9_-]+)_(north|south|east|west|up|down)$/.exec(key);
