@@ -200,7 +200,8 @@ export default function ModelEditor({ onModelChange }: Props) {
     setParts(remaining); setSelectedId(remaining[0]?.id ?? "");
   }
   const viewButtons: { key: ViewKey; icon: typeof Smartphone }[] = [
-    { key: "first", icon: Smartphone }, { key: "third", icon: UserRound }, { key: "armor", icon: Shield },
+    { key: "first", icon: Smartphone }, { key: "third", icon: UserRound },
+    { key: "helmet", icon: Shield }, { key: "chestplate", icon: Shield }, { key: "leggings", icon: Shield }, { key: "boots", icon: Shield },
     { key: "inventory", icon: Package }, { key: "itemframe", icon: Frame }, { key: "shelf", icon: PanelsTopLeft }
   ];
 
