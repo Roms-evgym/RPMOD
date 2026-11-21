@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { Box, Plus, Trash2, Rotate3D, Smartphone, UserRound, Shield, Package, Frame, PanelsTopLeft, Pencil, Eraser, Pipette, RotateCcw } from "lucide-react";
 
 export type CuboidPart = {
@@ -12,7 +13,7 @@ export type CuboidPart = {
 };
 
 type DisplayTransform = { rotation: [number, number, number]; translation: [number, number, number]; scale: [number, number, number] };
-type ViewKey = "first" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf" | "ground";
+type ViewKey = "first_right" | "first_left" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf" | "ground";
 type Props = { onModelChange: (json: string) => void; textureDataUrl?: string; onTextureChange: (dataUrl: string) => void };
 
 const initialParts: CuboidPart[] = [
@@ -20,6 +21,7 @@ const initialParts: CuboidPart[] = [
 ];
 const defaults: Record<string, DisplayTransform> = {
   firstperson_righthand: { rotation: [0, -90, 25], translation: [1.13, 3.2, 1.13], scale: [.68, .68, .68] },
+  firstperson_lefthand: { rotation: [0, 90, -25], translation: [-1.13, 3.2, 1.13], scale: [.68, .68, .68] },
   thirdperson_righthand: { rotation: [0, -90, 55], translation: [0, 4, 0], scale: [.85, .85, .85] },
   head: { rotation: [0, 180, 0], translation: [0, 13, 7], scale: [1, 1, 1] },
   gui: { rotation: [30, 225, 0], translation: [0, 0, 0], scale: [.625, .625, .625] },
@@ -27,7 +29,8 @@ const defaults: Record<string, DisplayTransform> = {
   ground: { rotation: [0, 0, 0], translation: [0, 0, 0], scale: [.25, .25, .25] }
 };
 const viewConfig: Record<ViewKey, { label: string; context: keyof typeof defaults; camera: [number, number, number]; target: [number, number, number] }> = {
-  first: { label: "First Person", context: "firstperson_righthand", camera: [15, 11, 19], target: [0, 0, 0] },
+  first_right: { label: "First Person · Rechts", context: "firstperson_righthand", camera: [15, 11, 19], target: [0, 0, 0] },
+  first_left: { label: "First Person · Links", context: "firstperson_lefthand", camera: [-15, 11, 19], target: [0, 0, 0] },
   third: { label: "Third Person", context: "thirdperson_righthand", camera: [19, 13, 23], target: [0, 0, 0] },
   helmet: { label: "Helm", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
   chestplate: { label: "Brustplatte", context: "head", camera: [0, 5, 27], target: [0, 0, 0] },
@@ -67,7 +70,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const [paintTool, setPaintTool] = useState<"brush" | "eraser" | "picker">("brush");
   const [parts, setParts] = useState<CuboidPart[]>(initialParts);
   const [selectedId, setSelectedId] = useState("body");
-  const [view, setView] = useState<ViewKey>("first");
+  const [view, setView] = useState<ViewKey>("first_right");
+  const [transformTool, setTransformTool] = useState<"translate" | "rotate" | "scale">("translate");
   const [transforms, setTransforms] = useState<Record<string, DisplayTransform>>(() => structuredClone(defaults));
   const selected = useMemo(() => parts.find(part => part.id === selectedId) ?? null, [parts, selectedId]);
   const active = viewConfig[view];
@@ -183,7 +187,47 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     modelGroup.position.set(t.translation[0], t.translation[1], t.translation[2]);
     modelGroup.scale.set(...t.scale);
     scene.add(modelGroup);
+    const transformControls = new TransformControls(camera, renderer.domElement);
+    transformControls.setMode(transformTool);
+    transformControls.setSpace("local");
+    transformControls.attach(modelGroup);
+    scene.add(transformControls.getHelper());
+    const saveGizmoTransform = () => {
+      if (transformControls.dragging) return;
+      const r = modelGroup.rotation;
+      setTransforms(current => ({ ...current, [active.context]: {
+        rotation: [THREE.MathUtils.radToDeg(r.x), THREE.MathUtils.radToDeg(r.y), THREE.MathUtils.radToDeg(r.z)],
+        translation: [modelGroup.position.x, modelGroup.position.y, modelGroup.position.z],
+        scale: [modelGroup.scale.x, modelGroup.scale.y, modelGroup.scale.z]
+      }}));
+    };
+    transformControls.addEventListener("mouseUp", saveGizmoTransform);
+    transformControls.addEventListener("dragging-changed", event => { controls.enabled = !(event.value as boolean); });
     const meshes: THREE.Mesh[] = [];
+    if (view === "third") {
+      const human = new THREE.Group();
+      const skin = new THREE.MeshStandardMaterial({ color: 0xc58f68, roughness: .9 });
+      const shirt = new THREE.MeshStandardMaterial({ color: 0x3976bd, roughness: .95 });
+      const pants = new THREE.MeshStandardMaterial({ color: 0x34445e, roughness: .95 });
+      const limb = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        mesh.position.set(x, y, z); human.add(mesh);
+      };
+      limb(8, 8, 8, skin, 0, 5, 0);
+      limb(8, 12, 4, shirt, 0, -5, 0);
+      limb(4, 12, 4, skin, -6, -5, 0);
+      limb(4, 12, 4, skin, 6, -5, 0);
+      limb(4, 12, 4, pants, -2, -17, 0);
+      limb(4, 12, 4, pants, 2, -17, 0);
+      human.position.set(0, 0, -9);
+      scene.add(human);
+    }
+    if (view === "first_left" || view === "first_right") {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(3.2, 9, 3.2), new THREE.MeshStandardMaterial({ color: 0xc58f68 }));
+      arm.position.set(view === "first_right" ? 8 : -8, -7, 1);
+      arm.rotation.z = view === "first_right" ? -.22 : .22;
+      scene.add(arm);
+    }
     const itemTexture = textureDataUrl ? new THREE.TextureLoader().load(textureDataUrl) : null;
     if (itemTexture) { itemTexture.magFilter = THREE.NearestFilter; itemTexture.minFilter = THREE.NearestFilter; itemTexture.colorSpace = THREE.SRGBColorSpace; }
     for (const part of parts) {
@@ -241,6 +285,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const animate = () => { frame = requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
     animate();
     return () => {
+      transformControls.removeEventListener("mouseUp", saveGizmoTransform);
+      transformControls.dispose();
       itemTexture?.dispose();
       cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); renderer.domElement.removeEventListener("pointermove", onPointerMove); window.removeEventListener("pointerup", onPointerUp); controls.dispose();
       modelGroup.traverse(object => {
@@ -252,7 +298,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, view, transform, textureDataUrl, paintTool, paintColor]);
+  }, [parts, selectedId, view, transform, textureDataUrl, paintTool, paintColor, transformTool]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
@@ -285,7 +331,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     setParts(remaining); setSelectedId(remaining[0]?.id ?? "");
   }
   const viewButtons: { key: ViewKey; icon: typeof Smartphone }[] = [
-    { key: "first", icon: Smartphone }, { key: "third", icon: UserRound },
+    { key: "first_right", icon: Smartphone }, { key: "first_left", icon: Smartphone }, { key: "third", icon: UserRound },
     { key: "helmet", icon: Shield }, { key: "chestplate", icon: Shield }, { key: "leggings", icon: Shield }, { key: "boots", icon: Shield },
     { key: "inventory", icon: Package }, { key: "itemframe", icon: Frame }, { key: "shelf", icon: PanelsTopLeft }, { key: "ground", icon: Box }
   ];
@@ -327,13 +373,20 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
           <input type="color" value={selected.color} onChange={event => setParts(current => current.map(part => part.id === selected.id ? { ...part, color: event.target.value } : part))}/>
         </> : <p className="hint">Füge einen Würfel hinzu, um das Modell zu formen.</p>}
         <div className="display-transform-editor">
-          <div className="transform-title"><Rotate3D size={14}/> Anzeige-Transformation · {active.label}</div>
+          <div className="transform-title"><Rotate3D size={14}/> 3D-Werkzeuge · {active.label}</div>
+          <div className="model-tool-actions transform-gizmo-tools">
+            <button type="button" className={transformTool === "translate" ? "" : "secondary"} onClick={() => setTransformTool("translate")}>Verschieben</button>
+            <button type="button" className={transformTool === "rotate" ? "" : "secondary"} onClick={() => setTransformTool("rotate")}>Drehen</button>
+            <button type="button" className={transformTool === "scale" ? "" : "secondary"} onClick={() => setTransformTool("scale")}>Skalieren</button>
+          </div>
+          <p className="model-hint">Ziehe die farbigen Achsen am 3D-Modell. Die Werte werden direkt übernommen.</p>
+          <div className="transform-title"><Rotate3D size={14}/> Feineinstellung</div>
           {(["rotation", "translation", "scale"] as const).map(field => <div className="transform-row" key={field}>
             <span>{field === "rotation" ? "Drehung °" : field === "translation" ? "Position" : "Skalierung"}</span>
             {(["X", "Y", "Z"] as const).map((axis, index) => <label key={axis}>{axis}<input type="number" step={field === "scale" ? .05 : .1} value={transform[field][index]} onChange={event => updateTransform(field, index as 0 | 1 | 2, Number(event.target.value))}/></label>)}
           </div>)}
         </div>
-        <p className="model-hint">First/Third Person, die vier Rüstungsteil-Vorschauen, Inventar-GUI und Item-Frame verwenden die passenden Editor-Ansichten. Die Rüstungsteil-Vorschauen markieren Helm, Brustplatte, Beinschutz und Stiefel am Mannequin; Minecraft-Rüstungsmodelle benötigen zusätzlich eigene Armor-Modelle und Texturen. Die Regalvorschau nutzt die GUI-Darstellung; die tatsächliche Regal-Inszenierung hängt vom Minecraft-Renderer ab.</p>
+        <p className="model-hint">First Person links/rechts und Third Person mit Spieler-Mannequin, die vier Rüstungsteil-Vorschauen, Inventar-GUI und Item-Frame verwenden die passenden Editor-Ansichten. Die Rüstungsteil-Vorschauen markieren Helm, Brustplatte, Beinschutz und Stiefel am Mannequin; Minecraft-Rüstungsmodelle benötigen zusätzlich eigene Armor-Modelle und Texturen. Die Regalvorschau nutzt die GUI-Darstellung; die tatsächliche Regal-Inszenierung hängt vom Minecraft-Renderer ab.</p>
       </div>
     </div>
   </section>;
