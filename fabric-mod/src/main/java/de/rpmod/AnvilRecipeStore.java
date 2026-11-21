@@ -32,7 +32,8 @@ public final class AnvilRecipeStore {
                 if (!Files.exists(manifestPath)) continue;
                 try (var reader = Files.newBufferedReader(manifestPath)) {
                     JsonObject manifest = JsonParser.parseReader(reader).getAsJsonObject();
-                    String code = manifest.get("shareCode").getAsString();\n                    String projectName = manifest.has("name") ? manifest.get("name").getAsString() : code;
+                    String code = manifest.get("shareCode").getAsString();
+                    String projectName = manifest.has("name") ? manifest.get("name").getAsString() : code;
                     JsonArray items = manifest.getAsJsonArray("customItems");
                     if (items == null) continue;
                     for (var element : items) {
