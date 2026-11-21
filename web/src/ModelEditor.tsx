@@ -72,6 +72,11 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const textureCanvasRef = useRef<HTMLCanvasElement>(null);
   const lastEmittedTexture = useRef("");
   const liveTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const transformControlsRef = useRef<TransformControls | null>(null);
+  const paintColorRef = useRef(paintColor);
+  const paintToolRef = useRef(paintTool);
+  const editorModeRef = useRef(editorMode);
+  const transformToolRef = useRef(transformTool);
   const canvasPaintingRef = useRef(false);
   const canvasPaintTargetRef = useRef<{ face: FaceKey; partId?: string }>({ face: "south" });
   const [paintColor, setPaintColor] = useState("#9df36a");
@@ -87,6 +92,17 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const selected = useMemo(() => parts.find(part => part.id === selectedId) ?? null, [parts, selectedId]);
   const active = viewConfig[view];
   const transform = transforms[active.context] ?? defaults[active.context];
+  paintColorRef.current = paintColor;
+  paintToolRef.current = paintTool;
+  editorModeRef.current = editorMode;
+  transformToolRef.current = transformTool;
+
+  useEffect(() => {
+    const controls = transformControlsRef.current;
+    if (!controls) return;
+    controls.setMode(transformTool);
+    controls.enabled = editorMode === "model";
+  }, [transformTool, editorMode]);
 
   useEffect(() => {
     onModelChange(JSON.stringify(makeModel(parts, transforms, faceTextures)));
@@ -105,7 +121,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   }, [textureDataUrl, selectedId, selectedFace, faceTextures]);
 
   function paintTexture(event: React.PointerEvent<HTMLCanvasElement>, publish = false) {
-    if (editorMode !== "paint") return;
+    if (editorModeRef.current !== "paint") return;
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -121,14 +137,14 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     if (!canvas || !ctx) return;
     const px = Math.max(0, Math.min(15, Math.floor(x)));
     const py = Math.max(0, Math.min(15, Math.floor(y)));
-    if (paintTool === "picker") {
+    if (paintToolRef.current === "picker") {
       const pixel = ctx.getImageData(px, py, 1, 1).data;
       if (pixel[3]) setPaintColor("#" + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, "0")).join(""));
       setPaintTool("brush");
       return;
     }
-    ctx.globalCompositeOperation = paintTool === "eraser" ? "destination-out" : "source-over";
-    ctx.fillStyle = paintColor;
+    ctx.globalCompositeOperation = paintToolRef.current === "eraser" ? "destination-out" : "source-over";
+    ctx.fillStyle = paintColorRef.current;
     ctx.fillRect(px, py, 1, 1);
     ctx.globalCompositeOperation = "source-over";
     if (liveTextureRef.current) liveTextureRef.current.needsUpdate = true;
@@ -207,8 +223,9 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     modelGroup.scale.set(...t.scale);
     scene.add(modelGroup);
     const transformControls = new TransformControls(camera, renderer.domElement);
-    transformControls.setMode(transformTool);
-    transformControls.enabled = editorMode === "model";
+    transformControls.setMode(transformToolRef.current);
+    transformControls.enabled = editorModeRef.current === "model";
+    transformControlsRef.current = transformControls;
     transformControls.setSpace("local");
     transformControls.attach(modelGroup);
     scene.add(transformControls.getHelper());
@@ -306,7 +323,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       return raycaster.intersectObjects(meshes, false)[0];
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (editorMode !== "paint") return;
+      if (editorModeRef.current !== "paint") return;
       const hit = hitModel(event);
       if (!hit || !(hit.object instanceof THREE.Mesh)) return;
       setSelectedId(String(hit.object.userData.partId ?? ""));
@@ -328,7 +345,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         if (canvas && ctx) {
           ctx.clearRect(0, 0, 16, 16);
           const paintStart = () => {
-            if (!painting3d || editorMode !== "paint") return;
+            if (!painting3d || editorModeRef.current !== "paint") return;
             const materialIndex = hit.face?.materialIndex ?? 4;
             const targetMaterial = Array.isArray(hitMesh.material) ? hitMesh.material[materialIndex] : hitMesh.material;
             if (targetMaterial instanceof THREE.MeshStandardMaterial) {
@@ -356,7 +373,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       }
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (editorMode !== "paint" || !painting3d || !paintingReady || paintTool === "picker") return;
+      if (editorModeRef.current !== "paint" || !painting3d || !paintingReady || paintToolRef.current === "picker") return;
       const hit = hitModel(event);
       if (hit?.uv && hit.object instanceof THREE.Mesh) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; const partId = String(hit.object.userData.partId ?? ""); if (face === paintingFace && partId === paintingPartId) paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, partId); }
     };
@@ -382,6 +399,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     return () => {
       transformControls.removeEventListener("mouseUp", saveGizmoTransform);
       transformControls.dispose();
+      transformControlsRef.current = null;
+      liveTextureRef.current = null;
       loadedTextures.forEach(texture => texture.dispose());
       cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); renderer.domElement.removeEventListener("pointermove", onPointerMove); window.removeEventListener("pointerup", onPointerUp); controls.dispose();
       modelGroup.traverse(object => {
@@ -393,7 +412,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, selectedFace, view, transform, textureDataUrl, faceTextures, paintTool, paintColor, transformTool, editorMode]);
+  }, [parts, selectedId, selectedFace, view, transform, textureDataUrl, faceTextures]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
