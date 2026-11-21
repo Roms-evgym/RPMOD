@@ -93,21 +93,35 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const rect = canvas.getBoundingClientRect();
     const x = Math.max(0, Math.min(15, Math.floor((event.clientX - rect.left) / rect.width * 16)));
     const y = Math.max(0, Math.min(15, Math.floor((event.clientY - rect.top) / rect.height * 16)));
+    paintPixel(x, y, true);
+  }
+
+  function paintPixel(x: number, y: number, publish: boolean) {
+    const canvas = textureCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const px = Math.max(0, Math.min(15, Math.floor(x)));
+    const py = Math.max(0, Math.min(15, Math.floor(y)));
     if (paintTool === "picker") {
-      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const pixel = ctx.getImageData(px, py, 1, 1).data;
       if (pixel[3]) setPaintColor("#" + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, "0")).join(""));
       setPaintTool("brush");
       return;
     }
     ctx.globalCompositeOperation = paintTool === "eraser" ? "destination-out" : "source-over";
     ctx.fillStyle = paintColor;
-    ctx.fillRect(x, y, 1, 1);
+    ctx.fillRect(px, py, 1, 1);
     ctx.globalCompositeOperation = "source-over";
+    if (publish) publishTexture();
+  }
+
+  function publishTexture() {
+    const canvas = textureCanvasRef.current;
+    if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     lastEmittedTexture.current = dataUrl;
     onTextureChange(dataUrl);
   }
-
   function clearTexture() {
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -187,15 +201,37 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     }
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const onPointerDown = (event: PointerEvent) => {
+    let painting3d = false;
+    const hitModel = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObjects(meshes, false)[0];
-      if (hit?.object instanceof THREE.Mesh && typeof hit.object.userData.partId === "string") setSelectedId(hit.object.userData.partId);
+      return raycaster.intersectObjects(meshes, false)[0];
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const hit = hitModel(event);
+      if (!hit || !(hit.object instanceof THREE.Mesh)) return;
+      setSelectedId(String(hit.object.userData.partId ?? ""));
+      if (event.button === 0 && hit.uv) {
+        painting3d = true;
+        controls.enabled = false;
+        paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false);
+      }
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!painting3d || paintTool === "picker") return;
+      const hit = hitModel(event);
+      if (hit?.uv) paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false);
+    };
+    const onPointerUp = () => {
+      if (painting3d) publishTexture();
+      painting3d = false;
+      controls.enabled = true;
     };
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
     const resize = () => {
       const width = Math.max(1, mount.clientWidth), height = Math.max(220, mount.clientHeight);
       camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setSize(width, height, false);
@@ -206,7 +242,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     animate();
     return () => {
       itemTexture?.dispose();
-      cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); controls.dispose();
+      cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); renderer.domElement.removeEventListener("pointermove", onPointerMove); window.removeEventListener("pointerup", onPointerUp); controls.dispose();
       modelGroup.traverse(object => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           object.geometry.dispose();
@@ -275,9 +311,9 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         <label>Stiftfarbe</label>
         <input className="model-paint-color" type="color" value={paintColor} onChange={event => setPaintColor(event.target.value)}/>
       </aside>
-      <div className="model-viewport" ref={mountRef}><div className="viewport-help">Ziehen: drehen · Scrollen: zoomen · Ansicht: {active.label}</div></div>
+      <div className="model-viewport" ref={mountRef}><div className="viewport-help">Würfel erstellen · Stift wählen und auf Oberfläche malen · Ziehen: drehen · Scrollen: zoomen · {active.label}</div></div>
       <div className="model-tools">
-        <div className="model-tool-actions"><button type="button" onClick={addPart}><Plus size={15}/> Würfel</button><button type="button" className="secondary" onClick={deletePart} disabled={!selected}><Trash2 size={15}/> Löschen</button></div>
+        <div className="model-tool-actions"><button type="button" onClick={addPart}><Plus size={15}/> 3D-Würfel erstellen</button><button type="button" className="secondary" onClick={deletePart} disabled={!selected}><Trash2 size={15}/> Löschen</button></div>
         <label>Bauteil</label>
         <select value={selectedId} onChange={event => setSelectedId(event.target.value)}>
           {parts.map(part => <option value={part.id} key={part.id}>{part.name}</option>)}
