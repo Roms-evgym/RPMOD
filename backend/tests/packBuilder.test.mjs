@@ -47,7 +47,7 @@ test("exports a valid Minecraft Java 26.3 resource pack", async () => {
     const anvilDefinition = JSON.parse(execFileSync("unzip", ["-p", zipPath, "assets/minecraft/items/stick.json"], { encoding: "utf8" }));
     assert.equal(anvilDefinition.model.property, "minecraft:component");
     assert.equal(anvilDefinition.model.component, "minecraft:custom_name");
-    assert.equal(anvilDefinition.model.cases[0].when.text, "Rubinstab");
+    assert.equal(anvilDefinition.model.cases[0].when.text, "Automated Test:Rubinstab");
     assert.equal(anvilDefinition.model.cases[0].model.model, "rpmod:item/rpm-test01/ruby-wand");
 
     const png = execFileSync("unzip", ["-p", zipPath, "assets/rpmod/textures/item/rpm-test01/ruby-wand.png"]);
