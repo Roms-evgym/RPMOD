@@ -92,7 +92,7 @@ public final class AnvilSidebar {
             boolean collapsed = COLLAPSED_CATEGORIES.contains(project);
             graphics.fill(x + 4, rowY, x + PANEL_WIDTH - 4, rowY + 22, 0xFF35465C);
             graphics.text(screen.getFont(), collapsed ? "▶" : "▼", x + 9, rowY + 7, 0xFFFFFFFF);
-            graphics.text(screen.getFont(), trim(screen, project + " (" + projectItems.size() + ")", PANEL_WIDTH - 36), x + 23, rowY + 7, 0xFFFFFFFF);
+            graphics.text(screen.getFont(), trim(screen, projectItems.get(0).projectName() + " (" + projectItems.size() + ")", PANEL_WIDTH - 36), x + 23, rowY + 7, 0xFFFFFFFF);
             rowY += 23;
             if (!collapsed) {
                 for (AnvilRecipeStore.Recipe recipe : projectItems) {
@@ -223,7 +223,7 @@ public final class AnvilSidebar {
         return AnvilRecipeStore.getRecipes().stream().filter(recipe ->
             recipe.renameTrigger().toLowerCase().contains(query)
                 || recipe.baseItemName().toLowerCase().contains(query)
-                || recipe.id().toLowerCase().contains(query)\n                || recipe.shareCode().toLowerCase().contains(query)
+                || recipe.id().toLowerCase().contains(query)\n                || recipe.shareCode().toLowerCase().contains(query)\n                || recipe.projectName().toLowerCase().contains(query)
         ).toList();
     }
 
