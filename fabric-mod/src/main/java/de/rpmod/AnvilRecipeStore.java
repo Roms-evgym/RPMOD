@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public final class AnvilRecipeStore {
-    public record Recipe(String shareCode, String id, String baseItem, String baseItemName, String renameTrigger) {}
+    public record Recipe(String shareCode, String projectName, String id, String baseItem, String baseItemName, String renameTrigger) {}
     private static volatile List<Recipe> cached = List.of();
 
     private AnvilRecipeStore() {}
@@ -32,7 +32,7 @@ public final class AnvilRecipeStore {
                 if (!Files.exists(manifestPath)) continue;
                 try (var reader = Files.newBufferedReader(manifestPath)) {
                     JsonObject manifest = JsonParser.parseReader(reader).getAsJsonObject();
-                    String code = manifest.get("shareCode").getAsString();
+                    String code = manifest.get("shareCode").getAsString();\n                    String projectName = manifest.has("name") ? manifest.get("name").getAsString() : code;
                     JsonArray items = manifest.getAsJsonArray("customItems");
                     if (items == null) continue;
                     for (var element : items) {
