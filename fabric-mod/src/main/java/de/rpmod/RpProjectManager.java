@@ -13,6 +13,9 @@ import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.ClickEvent;
 import java.util.stream.Stream;
 
 public final class RpProjectManager {
@@ -126,17 +129,19 @@ public final class RpProjectManager {
                 feedback.accept("Projektordner konnte nicht gelesen werden: " + safeMessage(exception));
                 return;
             }
-            if (changed > 0) {
-                try {
-                    refreshCombined();
-                    RPMODClient.LOGGER.info("Automatically installed updates for {} RPMOD project(s).", changed);
-                } catch (Exception exception) {
-                    failed++;
-                    RPMODClient.LOGGER.warn("Could not rebuild combined RPMOD pack", exception);
-                }
+            String summary = "RPMOD-Updateprüfung: " + checked + " Projekt(e) geprüft, " + changed + " Update(s) bereit, " + failed + " Fehler."; 
+            if (changed > 0 && quiet) {
+                Minecraft.getInstance().execute(() -> {
+                    if (Minecraft.getInstance().player != null) {
+                        var prompt = net.minecraft.network.chat.Component.literal("RPMOD: ")
+                            .append(net.minecraft.network.chat.Component.literal(changed + " Resource-Pack-Update(s) verfügbar. "))
+                            .append(net.minecraft.network.chat.Component.literal("[Neu laden]")
+                                .setStyle(Style.EMPTY.withColor(0x55FF55).withUnderlined(true).withClickEvent(new ClickEvent.RunCommand("/rp reload"))));
+                        Minecraft.getInstance().player.sendSystemMessage(prompt);
+                    }
+                });
             }
-            String summary = "RPMOD-Updateprüfung: " + checked + " Projekt(e) geprüft, " + changed + " aktualisiert, " + failed + " Fehler.";
-            if (!quiet || changed > 0 || failed > 0) feedback.accept(summary);
+            if (!quiet || failed > 0) feedback.accept(summary);
         });
     }
 
@@ -193,10 +198,20 @@ public final class RpProjectManager {
             }
         }
         Files.writeString(manifestFile, manifestResponse.body());
-        if (changed) AnvilRecipeStore.reload();
         return changed;
     }
 
+    public static void reloadPendingUpdates(Consumer<String> feedback) {
+        Thread.startVirtualThread(() -> {
+            try {
+                AnvilRecipeStore.reload();
+                refreshCombined();
+                feedback.accept("RPMOD: Resource Packs wurden neu geladen.");
+            } catch (Exception exception) {
+                feedback.accept("RPMOD: Neuladen fehlgeschlagen: " + safeMessage(exception));
+            }
+        });
+    }
     private static void refreshCombined() throws IOException {
         AnvilRecipeStore.reload();
         String combinedPack = CombinedPackBuilder.rebuild();
