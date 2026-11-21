@@ -252,7 +252,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, view, transform, textureDataUrl]);
+  }, [parts, selectedId, view, transform, textureDataUrl, paintTool, paintColor]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
@@ -276,7 +276,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   }
   function addPart() {
     const id = "cube-" + crypto.randomUUID().slice(0, 8);
-    setParts(current => [...current, { id, name: "Würfel " + (current.length + 1), from: [5, 5, 5], to: [11, 11, 11], color: "#9df36a" }]);
+    setParts(current => { const offsetX = ((current.length - 1) % 4) * 3 - 4; const offsetZ = Math.floor((current.length - 1) / 4) * 3 - 4; return [...current, { id, name: "Würfel " + (current.length + 1), from: [5 + offsetX, 5, 5 + offsetZ], to: [11 + offsetX, 11, 11 + offsetZ], color: "#9df36a" }]; });
     setSelectedId(id);
   }
   function deletePart() {
