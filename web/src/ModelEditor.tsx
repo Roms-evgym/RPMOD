@@ -72,6 +72,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const textureCanvasRef = useRef<HTMLCanvasElement>(null);
   const lastEmittedTexture = useRef("");
   const liveTextureRef = useRef<THREE.CanvasTexture | null>(null);
+  const canvasPaintingRef = useRef(false);
+  const canvasPaintTargetRef = useRef<{ face: FaceKey; partId?: string }>({ face: "south" });
   const [paintColor, setPaintColor] = useState("#9df36a");
   const [paintTool, setPaintTool] = useState<"brush" | "eraser" | "picker">("brush");
   const [editorMode, setEditorMode] = useState<"paint" | "model">("paint");
@@ -98,11 +100,11 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     ctx.clearRect(0, 0, 16, 16);
     if (!source) return;
     const image = new Image();
-    image.onload = () => { ctx.clearRect(0, 0, 16, 16); ctx.imageSmoothingEnabled = false; ctx.drawImage(image, 0, 0, 16, 16); };
+    image.onload = () => { ctx.clearRect(0, 0, 16, 16); ctx.imageSmoothingEnabled = false; ctx.drawImage(image, 0, 0, 16, 16); if (liveTextureRef.current) liveTextureRef.current.needsUpdate = true; };
     image.src = source;
   }, [textureDataUrl, selectedId, selectedFace, faceTextures]);
 
-  function paintTexture(event: React.PointerEvent<HTMLCanvasElement>) {
+  function paintTexture(event: React.PointerEvent<HTMLCanvasElement>, publish = false) {
     if (editorMode !== "paint") return;
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -110,7 +112,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const rect = canvas.getBoundingClientRect();
     const x = Math.max(0, Math.min(15, Math.floor((event.clientX - rect.left) / rect.width * 16)));
     const y = Math.max(0, Math.min(15, Math.floor((event.clientY - rect.top) / rect.height * 16)));
-    paintPixel(x, y, true);
+    paintPixel(x, y, publish);
   }
 
   function paintPixel(x: number, y: number, publish: boolean, face: FaceKey = selectedFace, partId = selected?.id) {
@@ -444,8 +446,10 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         </div>
         <div className="model-texture-canvas-wrap">
           <canvas ref={textureCanvasRef} width={16} height={16}
-            onPointerDown={event => { if (editorMode !== "paint") return; event.currentTarget.setPointerCapture(event.pointerId); paintTexture(event); }}
-            onPointerMove={event => { if (editorMode === "paint" && event.buttons === 1 && paintTool !== "picker") paintTexture(event); }}
+            onPointerDown={event => { if (editorMode !== "paint") return; event.currentTarget.setPointerCapture(event.pointerId); if (paintTool === "picker") { paintTexture(event); return; } canvasPaintingRef.current = true; canvasPaintTargetRef.current = { face: selectedFace, partId: selected?.id }; paintTexture(event); }}
+            onPointerMove={event => { if (editorMode === "paint" && canvasPaintingRef.current && event.buttons === 1 && paintTool !== "picker") paintTexture(event); }}
+            onPointerUp={() => { if (!canvasPaintingRef.current) return; canvasPaintingRef.current = false; publishTexture(canvasPaintTargetRef.current.face, canvasPaintTargetRef.current.partId); }}
+            onPointerCancel={() => { if (!canvasPaintingRef.current) return; canvasPaintingRef.current = false; publishTexture(canvasPaintTargetRef.current.face, canvasPaintTargetRef.current.partId); }}
             aria-label="Item-Textur bearbeiten"/>
         </div>
         <label>Stiftfarbe</label>
@@ -469,9 +473,9 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         <div className="display-transform-editor">
           <div className="transform-title"><Rotate3D size={14}/> 3D-Werkzeuge · {active.label}</div>
           <div className="model-tool-actions transform-gizmo-tools">
-            <button type="button" className={transformTool === "translate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("translate"); }}>Verschieben</button>
-            <button type="button" className={transformTool === "rotate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("rotate"); }}>Drehen</button>
-            <button type="button" className={transformTool === "scale" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("scale"); }}>Skalieren</button>
+            <button type="button" className={editorMode === "model" && transformTool === "translate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("translate"); }}>Verschieben</button>
+            <button type="button" className={editorMode === "model" && transformTool === "rotate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("rotate"); }}>Drehen</button>
+            <button type="button" className={editorMode === "model" && transformTool === "scale" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("scale"); }}>Skalieren</button>
           </div>
           <p className="model-hint">{editorMode === "model" ? "Modellmodus aktiv: Texturzeichnen ist gesperrt. Ziehe die farbigen Achsen am 3D-Modell." : "Texturmodus aktiv: Modell-Werkzeuge sind gesperrt. Wähle Stift, Radierer oder Pipette."} Die Werte werden direkt übernommen.</p>
           <div className="transform-title"><Rotate3D size={14}/> Feineinstellung</div>
