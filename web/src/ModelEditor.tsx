@@ -318,7 +318,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const onPointerMove = (event: PointerEvent) => {
       if (!painting3d || !paintingReady || paintTool === "picker") return;
       const hit = hitModel(event);
-      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintingFace = face; paintingFace = face; paintingPartId = String(hit.object.userData.partId ?? ""); paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, paintingPartId); }
+      if (hit?.uv && hit.object instanceof THREE.Mesh) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; const partId = String(hit.object.userData.partId ?? ""); if (face === paintingFace && partId === paintingPartId) paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, partId); }
     };
     const onPointerUp = () => {
       if (painting3d && !paintingReady) { pointerReleased = true; controls.enabled = true; return; }
