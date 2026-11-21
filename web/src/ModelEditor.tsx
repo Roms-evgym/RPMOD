@@ -73,10 +73,6 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const lastEmittedTexture = useRef("");
   const liveTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const transformControlsRef = useRef<TransformControls | null>(null);
-  const paintColorRef = useRef(paintColor);
-  const paintToolRef = useRef(paintTool);
-  const editorModeRef = useRef(editorMode);
-  const transformToolRef = useRef(transformTool);
   const canvasPaintingRef = useRef(false);
   const canvasPaintTargetRef = useRef<{ face: FaceKey; partId?: string }>({ face: "south" });
   const [paintColor, setPaintColor] = useState("#9df36a");
@@ -89,6 +85,10 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const [view, setView] = useState<ViewKey>("first_right");
   const [transformTool, setTransformTool] = useState<"translate" | "rotate" | "scale">("translate");
   const [transforms, setTransforms] = useState<Record<string, DisplayTransform>>(() => structuredClone(defaults));
+  const paintColorRef = useRef(paintColor);
+  const paintToolRef = useRef(paintTool);
+  const editorModeRef = useRef(editorMode);
+  const transformToolRef = useRef(transformTool);
   const selected = useMemo(() => parts.find(part => part.id === selectedId) ?? null, [parts, selectedId]);
   const active = viewConfig[view];
   const transform = transforms[active.context] ?? defaults[active.context];
