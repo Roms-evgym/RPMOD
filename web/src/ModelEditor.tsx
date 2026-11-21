@@ -110,7 +110,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     paintPixel(x, y, true);
   }
 
-  function paintPixel(x: number, y: number, publish: boolean) {
+  function paintPixel(x: number, y: number, publish: boolean, face: FaceKey = selectedFace) {
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -135,7 +135,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     const dataUrl = canvas.toDataURL("image/png");
     lastEmittedTexture.current = dataUrl;
     if (!selected) onTextureChange(dataUrl);
-    else setFaceTextures(current => ({ ...current, [selected.id]: { ...(current[selected.id] ?? {}), [selectedFace]: dataUrl } }));
+    else setFaceTextures(current => ({ ...current, [selected.id]: { ...(current[selected.id] ?? {}), [face]: dataUrl } }));
   }
   function clearTexture() {
     const canvas = textureCanvasRef.current;
@@ -283,16 +283,17 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       setSelectedId(String(hit.object.userData.partId ?? ""));
       if (event.button === 0 && hit.uv) {
         const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
-        setSelectedFace(faceOrder[hit.face?.materialIndex ?? 4] ?? "south");
+        const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south";
+        setSelectedFace(face);
         painting3d = true;
         controls.enabled = false;
-        paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false);
+        paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face);
       }
     };
     const onPointerMove = (event: PointerEvent) => {
       if (!painting3d || paintTool === "picker") return;
       const hit = hitModel(event);
-      if (hit?.uv) paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false);
+      if (hit?.uv) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face); }
     };
     const onPointerUp = () => {
       if (painting3d) publishTexture();
