@@ -323,13 +323,14 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         controls.enabled = false;
         const canvas = textureCanvasRef.current;
         const ctx = canvas?.getContext("2d");
+        const hitMesh = hit.object as THREE.Mesh;
         const source = faceTextures[partId]?.[face] || textureDataUrl;
-        if (ctx) {
+        if (canvas && ctx) {
           ctx.clearRect(0, 0, 16, 16);
           const paintStart = () => {
             if (!painting3d || editorMode !== "paint") return;
             const materialIndex = hit.face?.materialIndex ?? 4;
-            const targetMaterial = Array.isArray(hit.object.material) ? hit.object.material[materialIndex] : hit.object.material;
+            const targetMaterial = Array.isArray(hitMesh.material) ? hitMesh.material[materialIndex] : hitMesh.material;
             if (targetMaterial instanceof THREE.MeshStandardMaterial) {
               const liveMap = new THREE.CanvasTexture(canvas);
               liveMap.magFilter = THREE.NearestFilter;
