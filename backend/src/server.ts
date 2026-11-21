@@ -7,7 +7,7 @@ import { buildPack } from "./packBuilder.js";
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "24mb" }));
 app.get("/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -42,7 +42,8 @@ const itemSchema = z.object({
   renameTrigger: z.string().trim().min(1).max(80),
   category: z.enum(["weapon", "tool", "food", "decoration", "other"]).default("other"),
   iconBase64: z.string().max(8_000_000).optional(),
-  modelJson: z.string().max(200_000).optional()
+  // Model JSON also carries the linked item PNG and per-cube face PNGs.
+  modelJson: z.string().max(20_000_000).optional()
 });
 
 app.post("/api/projects/:shareCode/items", async (req, res, next) => {
