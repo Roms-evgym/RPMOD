@@ -71,8 +71,10 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const mountRef = useRef<HTMLDivElement>(null);
   const textureCanvasRef = useRef<HTMLCanvasElement>(null);
   const lastEmittedTexture = useRef("");
+  const liveTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const [paintColor, setPaintColor] = useState("#9df36a");
   const [paintTool, setPaintTool] = useState<"brush" | "eraser" | "picker">("brush");
+  const [editorMode, setEditorMode] = useState<"paint" | "model">("paint");
   const [selectedFace, setSelectedFace] = useState<FaceKey>("south");
   const [faceTextures, setFaceTextures] = useState<FaceTextures>({});
   const [parts, setParts] = useState<CuboidPart[]>(initialParts);
@@ -101,6 +103,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   }, [textureDataUrl, selectedId, selectedFace, faceTextures]);
 
   function paintTexture(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (editorMode !== "paint") return;
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -126,6 +129,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     ctx.fillStyle = paintColor;
     ctx.fillRect(px, py, 1, 1);
     ctx.globalCompositeOperation = "source-over";
+    if (liveTextureRef.current) liveTextureRef.current.needsUpdate = true;
     if (publish) publishTexture(face, partId);
   }
 
@@ -138,6 +142,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     else setFaceTextures(current => ({ ...current, [partId]: { ...(current[partId] ?? {}), [face]: dataUrl } }));
   }
   function clearTexture() {
+    if (editorMode !== "paint") return;
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -201,6 +206,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     scene.add(modelGroup);
     const transformControls = new TransformControls(camera, renderer.domElement);
     transformControls.setMode(transformTool);
+    transformControls.enabled = editorMode === "model";
     transformControls.setSpace("local");
     transformControls.attach(modelGroup);
     scene.add(transformControls.getHelper());
@@ -260,6 +266,22 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         const map = makeFaceTexture(source);
         return new THREE.MeshStandardMaterial({ color: map ? 0xffffff : part.color, map, roughness: .72, metalness: .04 });
       });
+      if (editorMode === "paint" && part.id === selectedId) {
+        const canvas = textureCanvasRef.current;
+        const material = materials[order.indexOf(selectedFace)];
+        if (canvas && material) {
+          const liveMap = new THREE.CanvasTexture(canvas);
+          liveMap.magFilter = THREE.NearestFilter;
+          liveMap.minFilter = THREE.NearestFilter;
+          liveMap.colorSpace = THREE.SRGBColorSpace;
+          material.map = liveMap;
+          material.color.set(0xffffff);
+          material.transparent = true;
+          material.needsUpdate = true;
+          liveTextureRef.current = liveMap;
+          loadedTextures.push(liveMap);
+        }
+      }
       const mesh = new THREE.Mesh(geometry, materials);
       mesh.position.set((part.from[0] + part.to[0]) / 2 - 8, (part.from[1] + part.to[1]) / 2 - 8, (part.from[2] + part.to[2]) / 2 - 8);
       mesh.userData.partId = part.id;
@@ -282,6 +304,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       return raycaster.intersectObjects(meshes, false)[0];
     };
     const onPointerDown = (event: PointerEvent) => {
+      if (editorMode !== "paint") return;
       const hit = hitModel(event);
       if (!hit || !(hit.object instanceof THREE.Mesh)) return;
       setSelectedId(String(hit.object.userData.partId ?? ""));
@@ -302,7 +325,22 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         if (ctx) {
           ctx.clearRect(0, 0, 16, 16);
           const paintStart = () => {
-            if (!painting3d) return;
+            if (!painting3d || editorMode !== "paint") return;
+            const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
+            const materialIndex = hit.face?.materialIndex ?? 4;
+            const targetMaterial = Array.isArray(hit.object.material) ? hit.object.material[materialIndex] : hit.object.material;
+            if (targetMaterial instanceof THREE.MeshStandardMaterial) {
+              const liveMap = new THREE.CanvasTexture(canvas);
+              liveMap.magFilter = THREE.NearestFilter;
+              liveMap.minFilter = THREE.NearestFilter;
+              liveMap.colorSpace = THREE.SRGBColorSpace;
+              targetMaterial.map = liveMap;
+              targetMaterial.color.set(0xffffff);
+              targetMaterial.transparent = true;
+              targetMaterial.needsUpdate = true;
+              liveTextureRef.current = liveMap;
+              loadedTextures.push(liveMap);
+            }
             paintingReady = true;
             paintPixel(hit.uv!.x * 16, (1 - hit.uv!.y) * 16, false, face, partId);
             if (pointerReleased) { publishTexture(face, partId); painting3d = false; paintingReady = false; pointerReleased = false; }
@@ -316,7 +354,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       }
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (!painting3d || !paintingReady || paintTool === "picker") return;
+      if (editorMode !== "paint" || !painting3d || !paintingReady || paintTool === "picker") return;
       const hit = hitModel(event);
       if (hit?.uv && hit.object instanceof THREE.Mesh) { const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"]; const face = faceOrder[hit.face?.materialIndex ?? 4] ?? "south"; const partId = String(hit.object.userData.partId ?? ""); if (face === paintingFace && partId === paintingPartId) paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false, face, partId); }
     };
@@ -353,7 +391,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, view, transform, textureDataUrl, faceTextures, paintTool, paintColor, transformTool]);
+  }, [parts, selectedId, selectedFace, view, transform, textureDataUrl, faceTextures, paintTool, paintColor, transformTool, editorMode]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
@@ -396,17 +434,19 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     <div className="model-view-tabs">{viewButtons.map(({ key, icon: Icon }) => <button type="button" key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><Icon size={14}/>{viewConfig[key].label}</button>)}</div>
     <div className="model-editor-layout">
       <aside className="model-texture-panel">
-        <strong>Würfel-Textur</strong><span>{selected?.name ?? "Kein Würfel"} · 16 × 16 Pixel</span><label>Seite auswählen</label><select className="face-select" value={selectedFace} onChange={event => setSelectedFace(event.target.value as FaceKey)}>{faceNames.map(face => <option key={face.key} value={face.key}>{face.label}</option>)}</select>
+        <strong>Würfel-Textur</strong><span>{selected?.name ?? "Kein Würfel"} · 16 × 16 Pixel</span>
+        <div className="model-mode-switch"><button type="button" className={editorMode === "paint" ? "active" : ""} onClick={() => setEditorMode("paint")}>Textur malen</button><button type="button" className={editorMode === "model" ? "active" : ""} onClick={() => setEditorMode("model")}>Modell bearbeiten</button></div>
+        <label>Seite auswählen</label><select className="face-select" value={selectedFace} onChange={event => setSelectedFace(event.target.value as FaceKey)}>{faceNames.map(face => <option key={face.key} value={face.key}>{face.label}</option>)}</select>
         <div className="model-texture-tools">
-          <button type="button" className={paintTool === "brush" ? "active" : ""} title="Stift" onClick={() => setPaintTool("brush")}><Pencil size={16}/></button>
-          <button type="button" className={paintTool === "eraser" ? "active" : ""} title="Radierer" onClick={() => setPaintTool("eraser")}><Eraser size={16}/></button>
-          <button type="button" className={paintTool === "picker" ? "active" : ""} title="Pipette" onClick={() => setPaintTool("picker")}><Pipette size={16}/></button>
-          <button type="button" title="Textur leeren" onClick={clearTexture}><RotateCcw size={16}/></button>
+          <button type="button" className={paintTool === "brush" ? "active" : ""} title="Stift" onClick={() => { setEditorMode("paint"); setPaintTool("brush"); }}><Pencil size={16}/></button>
+          <button type="button" className={paintTool === "eraser" ? "active" : ""} title="Radierer" onClick={() => { setEditorMode("paint"); setPaintTool("eraser"); }}><Eraser size={16}/></button>
+          <button type="button" className={paintTool === "picker" ? "active" : ""} title="Pipette" onClick={() => { setEditorMode("paint"); setPaintTool("picker"); }}><Pipette size={16}/></button>
+          <button type="button" title="Textur leeren" onClick={() => { setEditorMode("paint"); clearTexture(); }}><RotateCcw size={16}/></button>
         </div>
         <div className="model-texture-canvas-wrap">
           <canvas ref={textureCanvasRef} width={16} height={16}
-            onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); paintTexture(event); }}
-            onPointerMove={event => { if (event.buttons === 1 && paintTool !== "picker") paintTexture(event); }}
+            onPointerDown={event => { if (editorMode !== "paint") return; event.currentTarget.setPointerCapture(event.pointerId); paintTexture(event); }}
+            onPointerMove={event => { if (editorMode === "paint" && event.buttons === 1 && paintTool !== "picker") paintTexture(event); }}
             aria-label="Item-Textur bearbeiten"/>
         </div>
         <label>Stiftfarbe</label>
@@ -430,11 +470,11 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         <div className="display-transform-editor">
           <div className="transform-title"><Rotate3D size={14}/> 3D-Werkzeuge · {active.label}</div>
           <div className="model-tool-actions transform-gizmo-tools">
-            <button type="button" className={transformTool === "translate" ? "" : "secondary"} onClick={() => setTransformTool("translate")}>Verschieben</button>
-            <button type="button" className={transformTool === "rotate" ? "" : "secondary"} onClick={() => setTransformTool("rotate")}>Drehen</button>
-            <button type="button" className={transformTool === "scale" ? "" : "secondary"} onClick={() => setTransformTool("scale")}>Skalieren</button>
+            <button type="button" className={transformTool === "translate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("translate"); }}>Verschieben</button>
+            <button type="button" className={transformTool === "rotate" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("rotate"); }}>Drehen</button>
+            <button type="button" className={transformTool === "scale" ? "" : "secondary"} onClick={() => { setEditorMode("model"); setTransformTool("scale"); }}>Skalieren</button>
           </div>
-          <p className="model-hint">Ziehe die farbigen Achsen am 3D-Modell. Die Werte werden direkt übernommen.</p>
+          <p className="model-hint">{editorMode === "model" ? "Modellmodus aktiv: Texturzeichnen ist gesperrt. Ziehe die farbigen Achsen am 3D-Modell." : "Texturmodus aktiv: Modell-Werkzeuge sind gesperrt. Wähle Stift, Radierer oder Pipette."} Die Werte werden direkt übernommen.</p>
           <div className="transform-title"><Rotate3D size={14}/> Feineinstellung</div>
           {(["rotation", "translation", "scale"] as const).map(field => <div className="transform-row" key={field}>
             <span>{field === "rotation" ? "Drehung °" : field === "translation" ? "Position" : "Skalierung"}</span>
