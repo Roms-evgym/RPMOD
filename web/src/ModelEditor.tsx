@@ -246,14 +246,19 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       const skin = new THREE.MeshStandardMaterial({ color: 0xc58f68, roughness: .9 });
       const shirt = new THREE.MeshStandardMaterial({ color: 0x3976bd, roughness: .95 });
       const pants = new THREE.MeshStandardMaterial({ color: 0x34445e, roughness: .95 });
-      const limb = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => {
+      const limb = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number, rotationZ = 0) => {
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-        mesh.position.set(x, y, z); human.add(mesh);
+        mesh.position.set(x, y, z);
+        mesh.rotation.z = rotationZ;
+        human.add(mesh);
       };
       limb(8, 8, 8, skin, 0, 5, 0);
       limb(8, 12, 4, shirt, 0, -5, 0);
-      limb(4, 12, 4, skin, -6, -5, 0);
-      limb(4, 12, 4, skin, 6, -5, 0);
+      // Beide Arme waagrecht nach außen: sichtbare ausgestreckte Hände links und rechts.
+      limb(4, 12, 4, shirt, -10, 0, 0, Math.PI / 2);
+      limb(4, 12, 4, shirt, 10, 0, 0, -Math.PI / 2);
+      limb(4, 4, 4, skin, -17, 0, 0);
+      limb(4, 4, 4, skin, 17, 0, 0);
       limb(4, 12, 4, pants, -2, -17, 0);
       limb(4, 12, 4, pants, 2, -17, 0);
       human.position.set(0, 0, -9);
