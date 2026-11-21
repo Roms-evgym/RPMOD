@@ -59,6 +59,38 @@ test("exports a valid Minecraft Java 26.3 resource pack", async () => {
   }
 });
 
+test("exports the item texture bundled inside its saved model document", async () => {
+  const shareCode = "RPM-TEST03";
+  const zipPath = join("storage", shareCode, "pack.zip");
+  const onePixelPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l7sAAAAASUVORK5CYII=";
+  const modelJson = JSON.stringify({
+    parent: "minecraft:block/block",
+    textures: { "0": "rpmod:item/__texture__", particle: "rpmod:item/__texture__" },
+    rpmodItemTexture: onePixelPng,
+    rpmodFaceTextures: {},
+    elements: []
+  });
+  const manifest = {
+    shareCode, name: "Bundled Texture Test", packHash: "2".repeat(64), packFormat: 97.1,
+    gameVersions: ["26.3"],
+    customItems: [{
+      id: "bundled-item", baseItem: "minecraft:paper", baseItemName: "Papier",
+      renameTrigger: "Bundled", category: "decoration", modelJson
+    }]
+  };
+  try {
+    await buildPack(manifest);
+    const model = JSON.parse(execFileSync("unzip", ["-p", zipPath, "assets/rpmod/models/item/rpm-test03/bundled-item.json"], { encoding: "utf8" }));
+    assert.equal("rpmodItemTexture" in model, false);
+    const png = execFileSync("unzip", ["-p", zipPath, "assets/rpmod/textures/item/rpm-test03/bundled-item.png"]);
+    assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    assert.equal(png.readUInt32BE(16), 1);
+    assert.equal(png.readUInt32BE(20), 1);
+  } finally {
+    rmSync(join("storage", shareCode), { recursive: true, force: true });
+  }
+});
+
 test("exports saved 3D cuboids with the project's texture id", async () => {
   const shareCode = "RPM-TEST02";
   const zipPath = join("storage", shareCode, "pack.zip");
