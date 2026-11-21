@@ -55,13 +55,23 @@ export default function App() {
     if (!project?.editToken) return;
     setBusy(true);
     try {
+      // Save model geometry and every face texture as one linked item document.
+      let linkedModelJson = modelJson;
+      if (linkedModelJson) {
+        const modelDocument = JSON.parse(linkedModelJson) as Record<string, unknown>;
+        if (iconBase64) modelDocument.rpmodItemTexture = iconBase64;
+        linkedModelJson = JSON.stringify(modelDocument);
+      }
       const response = await fetch(API + "/api/projects/" + project.shareCode + "/items", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-rpmod-edit-token": project.editToken },
-        body: JSON.stringify({ id: itemId, baseItem, baseItemName, renameTrigger, category, ...(iconBase64 ? { iconBase64 } : {}), ...(modelJson ? { modelJson } : {}) })
+        body: JSON.stringify({ id: itemId, baseItem, baseItemName, renameTrigger, category, ...(!linkedModelJson && iconBase64 ? { iconBase64 } : {}), ...(linkedModelJson ? { modelJson: linkedModelJson } : {}) })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Item konnte nicht gespeichert werden");
+      if (!response.ok) {
+        const detail = data.details?.fieldErrors ? " " + Object.entries(data.details.fieldErrors).map(([field, errors]) => field + ": " + (errors as string[]).join(", ")).join(" · ") : "";
+        throw new Error((data.error ?? "Item konnte nicht gespeichert werden") + detail);
+      }
       setProject({ ...data, editToken: project.editToken });
       setMessage("Item wurde im Projekt gespeichert.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Speichern fehlgeschlagen"); }
