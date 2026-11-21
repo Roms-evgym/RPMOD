@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Box, Plus, Trash2, Rotate3D, Smartphone, UserRound, Shield, Package, Frame, PanelsTopLeft } from "lucide-react";
+import { Box, Plus, Trash2, Rotate3D, Smartphone, UserRound, Shield, Package, Frame, PanelsTopLeft, Pencil, Eraser, Pipette, RotateCcw } from "lucide-react";
 
 export type CuboidPart = {
   id: string;
@@ -13,7 +13,7 @@ export type CuboidPart = {
 
 type DisplayTransform = { rotation: [number, number, number]; translation: [number, number, number]; scale: [number, number, number] };
 type ViewKey = "first" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf" | "ground";
-type Props = { onModelChange: (json: string) => void; textureDataUrl?: string };
+type Props = { onModelChange: (json: string) => void; textureDataUrl?: string; onTextureChange: (dataUrl: string) => void };
 
 const initialParts: CuboidPart[] = [
   { id: "body", name: "Hauptteil", from: [4, 3, 4], to: [12, 13, 12], color: "#9df36a" }
@@ -59,8 +59,12 @@ function makeModel(parts: CuboidPart[], transforms: Record<string, DisplayTransf
   };
 }
 
-export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
+export default function ModelEditor({ onModelChange, textureDataUrl, onTextureChange }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const textureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const lastEmittedTexture = useRef("");
+  const [paintColor, setPaintColor] = useState("#9df36a");
+  const [paintTool, setPaintTool] = useState<"brush" | "eraser" | "picker">("brush");
   const [parts, setParts] = useState<CuboidPart[]>(initialParts);
   const [selectedId, setSelectedId] = useState("body");
   const [view, setView] = useState<ViewKey>("first");
@@ -72,6 +76,47 @@ export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
   useEffect(() => {
     onModelChange(JSON.stringify(makeModel(parts, transforms)));
   }, [parts, transforms, onModelChange]);
+
+  useEffect(() => {
+    const canvas = textureCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !textureDataUrl || textureDataUrl === lastEmittedTexture.current) return;
+    const image = new Image();
+    image.onload = () => { ctx.clearRect(0, 0, 16, 16); ctx.imageSmoothingEnabled = false; ctx.drawImage(image, 0, 0, 16, 16); };
+    image.src = textureDataUrl;
+  }, [textureDataUrl]);
+
+  function paintTexture(event: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = textureCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(15, Math.floor((event.clientX - rect.left) / rect.width * 16)));
+    const y = Math.max(0, Math.min(15, Math.floor((event.clientY - rect.top) / rect.height * 16)));
+    if (paintTool === "picker") {
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      if (pixel[3]) setPaintColor("#" + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, "0")).join(""));
+      setPaintTool("brush");
+      return;
+    }
+    ctx.globalCompositeOperation = paintTool === "eraser" ? "destination-out" : "source-over";
+    ctx.fillStyle = paintColor;
+    ctx.fillRect(x, y, 1, 1);
+    ctx.globalCompositeOperation = "source-over";
+    const dataUrl = canvas.toDataURL("image/png");
+    lastEmittedTexture.current = dataUrl;
+    onTextureChange(dataUrl);
+  }
+
+  function clearTexture() {
+    const canvas = textureCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, 16, 16);
+    const dataUrl = canvas.toDataURL("image/png");
+    lastEmittedTexture.current = dataUrl;
+    onTextureChange(dataUrl);
+  }
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -213,6 +258,23 @@ export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
     <div className="model-editor-heading"><div className="panel-title"><Box/><h2>Item-Studio · Textur &amp; Modell</h2></div><span className="model-hint">Gemeinsame Vorschau · 16 × 16 × 16</span></div>
     <div className="model-view-tabs">{viewButtons.map(({ key, icon: Icon }) => <button type="button" key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><Icon size={14}/>{viewConfig[key].label}</button>)}</div>
     <div className="model-editor-layout">
+      <aside className="model-texture-panel">
+        <strong>Textur</strong><span>16 × 16 Pixel</span>
+        <div className="model-texture-tools">
+          <button type="button" className={paintTool === "brush" ? "active" : ""} title="Stift" onClick={() => setPaintTool("brush")}><Pencil size={16}/></button>
+          <button type="button" className={paintTool === "eraser" ? "active" : ""} title="Radierer" onClick={() => setPaintTool("eraser")}><Eraser size={16}/></button>
+          <button type="button" className={paintTool === "picker" ? "active" : ""} title="Pipette" onClick={() => setPaintTool("picker")}><Pipette size={16}/></button>
+          <button type="button" title="Textur leeren" onClick={clearTexture}><RotateCcw size={16}/></button>
+        </div>
+        <div className="model-texture-canvas-wrap">
+          <canvas ref={textureCanvasRef} width={16} height={16}
+            onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); paintTexture(event); }}
+            onPointerMove={event => { if (event.buttons === 1 && paintTool !== "picker") paintTexture(event); }}
+            aria-label="Item-Textur bearbeiten"/>
+        </div>
+        <label>Stiftfarbe</label>
+        <input className="model-paint-color" type="color" value={paintColor} onChange={event => setPaintColor(event.target.value)}/>
+      </aside>
       <div className="model-viewport" ref={mountRef}><div className="viewport-help">Ziehen: drehen · Scrollen: zoomen · Ansicht: {active.label}</div></div>
       <div className="model-tools">
         <div className="model-tool-actions"><button type="button" onClick={addPart}><Plus size={15}/> Würfel</button><button type="button" className="secondary" onClick={deletePart} disabled={!selected}><Trash2 size={15}/> Löschen</button></div>
