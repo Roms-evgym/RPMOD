@@ -196,8 +196,9 @@ public final class AnvilSidebar {
         if (!menu.getCarried().isEmpty()) {
             client.gameMode.handleContainerInput(menu.containerId, inventoryMenuSlot, 0, ContainerInput.PICKUP, player);
         }
-        ((AnvilScreenAccessor) screen).rpmod$getName().setValue(recipe.renameTrigger());
-        player.sendSystemMessage(Component.literal("RPMOD: " + recipe.renameTrigger() + " vorbereitet."));
+        String anvilName = recipe.projectName() + ":" + recipe.renameTrigger();
+        ((AnvilScreenAccessor) screen).rpmod$getName().setValue(anvilName);
+        player.sendSystemMessage(Component.literal("RPMOD: " + anvilName + " vorbereitet."));
     }
 
     private static ItemStack createBaseStack(String itemId) {
