@@ -12,6 +12,9 @@ export type CuboidPart = {
   color: string;
 };
 
+type FaceKey = "north" | "south" | "east" | "west" | "up" | "down";
+type FaceTextures = Record<string, Partial<Record<FaceKey, string>>>;
+const faceNames: { key: FaceKey; label: string }[] = [{key:"north",label:"Hinten"},{key:"south",label:"Vorne"},{key:"east",label:"Rechts"},{key:"west",label:"Links"},{key:"up",label:"Oben"},{key:"down",label:"Unten"}];
 type DisplayTransform = { rotation: [number, number, number]; translation: [number, number, number]; scale: [number, number, number] };
 type ViewKey = "first_right" | "first_left" | "third" | "helmet" | "chestplate" | "leggings" | "boots" | "inventory" | "itemframe" | "shelf" | "ground";
 type Props = { onModelChange: (json: string) => void; textureDataUrl?: string; onTextureChange: (dataUrl: string) => void };
@@ -42,20 +45,22 @@ const viewConfig: Record<ViewKey, { label: string; context: keyof typeof default
   ground: { label: "Auf dem Boden", context: "ground", camera: [17, 5, 20], target: [0, -1, 0] }
 };
 
-function makeModel(parts: CuboidPart[], transforms: Record<string, DisplayTransform>) {
-  const faces = {
-    north: { uv: [0, 0, 16, 16], texture: "#0" },
-    south: { uv: [0, 0, 16, 16], texture: "#0" },
-    east: { uv: [0, 0, 16, 16], texture: "#0" },
-    west: { uv: [0, 0, 16, 16], texture: "#0" },
-    up: { uv: [0, 0, 16, 16], texture: "#0" },
-    down: { uv: [0, 0, 16, 16], texture: "#0" }
-  };
+function makeModel(parts: CuboidPart[], transforms: Record<string, DisplayTransform>, faceTextures: FaceTextures) {
+  const textureMap: Record<string, string> = { "0": "rpmod:item/__texture__", particle: "rpmod:item/__texture__" };
+  const elements = parts.map(part => {
+    const faces = Object.fromEntries(faceNames.map(({key}) => {
+      const textureKey = "part_" + part.id + "_" + key;
+      textureMap[textureKey] = "rpmod:item/__face_" + part.id + "_" + key + "__";
+      return [key, { uv: [0, 0, 16, 16], texture: "#" + textureKey }];
+    }));
+    return { from: part.from, to: part.to, faces };
+  });
   return {
     parent: "minecraft:block/block",
     ambientocclusion: true,
-    textures: { "0": "rpmod:item/__texture__", particle: "rpmod:item/__texture__" },
-    elements: parts.map(part => ({ from: part.from, to: part.to, faces })),
+    textures: textureMap,
+    rpmodFaceTextures: faceTextures,
+    elements,
     display: Object.fromEntries(Object.entries(transforms).map(([key, value]) => [key, {
       rotation: value.rotation, translation: value.translation, scale: value.scale
     }]))
@@ -68,6 +73,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const lastEmittedTexture = useRef("");
   const [paintColor, setPaintColor] = useState("#9df36a");
   const [paintTool, setPaintTool] = useState<"brush" | "eraser" | "picker">("brush");
+  const [selectedFace, setSelectedFace] = useState<FaceKey>("south");
+  const [faceTextures, setFaceTextures] = useState<FaceTextures>({});
   const [parts, setParts] = useState<CuboidPart[]>(initialParts);
   const [selectedId, setSelectedId] = useState("body");
   const [view, setView] = useState<ViewKey>("first_right");
@@ -78,17 +85,20 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
   const transform = transforms[active.context] ?? defaults[active.context];
 
   useEffect(() => {
-    onModelChange(JSON.stringify(makeModel(parts, transforms)));
-  }, [parts, transforms, onModelChange]);
+    onModelChange(JSON.stringify(makeModel(parts, transforms, faceTextures)));
+  }, [parts, transforms, faceTextures, onModelChange]);
 
   useEffect(() => {
     const canvas = textureCanvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !textureDataUrl || textureDataUrl === lastEmittedTexture.current) return;
+    if (!canvas || !ctx) return;
+    const source = (selected && faceTextures[selected.id]?.[selectedFace]) || textureDataUrl;
+    ctx.clearRect(0, 0, 16, 16);
+    if (!source) return;
     const image = new Image();
     image.onload = () => { ctx.clearRect(0, 0, 16, 16); ctx.imageSmoothingEnabled = false; ctx.drawImage(image, 0, 0, 16, 16); };
-    image.src = textureDataUrl;
-  }, [textureDataUrl]);
+    image.src = source;
+  }, [textureDataUrl, selectedId, selectedFace, faceTextures]);
 
   function paintTexture(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = textureCanvasRef.current;
@@ -124,7 +134,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     lastEmittedTexture.current = dataUrl;
-    onTextureChange(dataUrl);
+    if (!selected) onTextureChange(dataUrl);
+    else setFaceTextures(current => ({ ...current, [selected.id]: { ...(current[selected.id] ?? {}), [selectedFace]: dataUrl } }));
   }
   function clearTexture() {
     const canvas = textureCanvasRef.current;
@@ -133,7 +144,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     ctx.clearRect(0, 0, 16, 16);
     const dataUrl = canvas.toDataURL("image/png");
     lastEmittedTexture.current = dataUrl;
-    onTextureChange(dataUrl);
+    if (!selected) onTextureChange(dataUrl);
+    else setFaceTextures(current => ({ ...current, [selected.id]: { ...(current[selected.id] ?? {}), [selectedFace]: dataUrl } }));
   }
 
   useEffect(() => {
@@ -228,15 +240,27 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       arm.rotation.z = view === "first_right" ? -.22 : .22;
       scene.add(arm);
     }
-    const itemTexture = textureDataUrl ? new THREE.TextureLoader().load(textureDataUrl) : null;
-    if (itemTexture) { itemTexture.magFilter = THREE.NearestFilter; itemTexture.minFilter = THREE.NearestFilter; itemTexture.colorSpace = THREE.SRGBColorSpace; }
+    const textureLoader = new THREE.TextureLoader();
+    const loadedTextures: THREE.Texture[] = [];
+    const makeFaceTexture = (source?: string) => {
+      if (!source) return null;
+      const texture = textureLoader.load(source);
+      texture.magFilter = THREE.NearestFilter; texture.minFilter = THREE.NearestFilter; texture.colorSpace = THREE.SRGBColorSpace;
+      loadedTextures.push(texture);
+      return texture;
+    };
     for (const part of parts) {
       const width = Math.max(.1, part.to[0] - part.from[0]);
       const height = Math.max(.1, part.to[1] - part.from[1]);
       const depth = Math.max(.1, part.to[2] - part.from[2]);
       const geometry = new THREE.BoxGeometry(width, height, depth);
-      const material = new THREE.MeshStandardMaterial({ color: itemTexture ? 0xffffff : part.color, map: itemTexture, roughness: .72, metalness: .04 });
-      const mesh = new THREE.Mesh(geometry, material);
+      const order: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
+      const materials = order.map(face => {
+        const source = faceTextures[part.id]?.[face] || textureDataUrl;
+        const map = makeFaceTexture(source);
+        return new THREE.MeshStandardMaterial({ color: map ? 0xffffff : part.color, map, roughness: .72, metalness: .04 });
+      });
+      const mesh = new THREE.Mesh(geometry, materials);
       mesh.position.set((part.from[0] + part.to[0]) / 2 - 8, (part.from[1] + part.to[1]) / 2 - 8, (part.from[2] + part.to[2]) / 2 - 8);
       mesh.userData.partId = part.id;
       mesh.castShadow = true; mesh.receiveShadow = true;
@@ -258,6 +282,8 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       if (!hit || !(hit.object instanceof THREE.Mesh)) return;
       setSelectedId(String(hit.object.userData.partId ?? ""));
       if (event.button === 0 && hit.uv) {
+        const faceOrder: FaceKey[] = ["east", "west", "up", "down", "south", "north"];
+        setSelectedFace(faceOrder[hit.face?.materialIndex ?? 4] ?? "south");
         painting3d = true;
         controls.enabled = false;
         paintPixel(hit.uv.x * 16, (1 - hit.uv.y) * 16, false);
@@ -287,7 +313,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     return () => {
       transformControls.removeEventListener("mouseUp", saveGizmoTransform);
       transformControls.dispose();
-      itemTexture?.dispose();
+      loadedTextures.forEach(texture => texture.dispose());
       cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); renderer.domElement.removeEventListener("pointermove", onPointerMove); window.removeEventListener("pointerup", onPointerUp); controls.dispose();
       modelGroup.traverse(object => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
@@ -298,7 +324,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, view, transform, textureDataUrl, paintTool, paintColor, transformTool]);
+  }, [parts, selectedId, view, transform, textureDataUrl, faceTextures, paintTool, paintColor, transformTool]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
@@ -341,7 +367,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
     <div className="model-view-tabs">{viewButtons.map(({ key, icon: Icon }) => <button type="button" key={key} className={view === key ? "active" : ""} onClick={() => setView(key)}><Icon size={14}/>{viewConfig[key].label}</button>)}</div>
     <div className="model-editor-layout">
       <aside className="model-texture-panel">
-        <strong>Textur</strong><span>16 × 16 Pixel</span>
+        <strong>Würfel-Textur</strong><span>{selected?.name ?? "Kein Würfel"} · 16 × 16 Pixel</span><label>Seite auswählen</label><select className="face-select" value={selectedFace} onChange={event => setSelectedFace(event.target.value as FaceKey)}>{faceNames.map(face => <option key={face.key} value={face.key}>{face.label}</option>)}</select>
         <div className="model-texture-tools">
           <button type="button" className={paintTool === "brush" ? "active" : ""} title="Stift" onClick={() => setPaintTool("brush")}><Pencil size={16}/></button>
           <button type="button" className={paintTool === "eraser" ? "active" : ""} title="Radierer" onClick={() => setPaintTool("eraser")}><Eraser size={16}/></button>
@@ -357,7 +383,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl, onTextureCh
         <label>Stiftfarbe</label>
         <input className="model-paint-color" type="color" value={paintColor} onChange={event => setPaintColor(event.target.value)}/>
       </aside>
-      <div className="model-viewport" ref={mountRef}><div className="viewport-help">Würfel erstellen · Stift wählen und auf Oberfläche malen · Ziehen: drehen · Scrollen: zoomen · {active.label}</div></div>
+      <div className="model-viewport" ref={mountRef}><div className="viewport-help">Würfel auswählen · Stift wählen und auf gewünschter Seite malen · Ziehen: drehen · Scrollen: zoomen · {active.label}</div></div>
       <div className="model-tools">
         <div className="model-tool-actions"><button type="button" onClick={addPart}><Plus size={15}/> 3D-Würfel erstellen</button><button type="button" className="secondary" onClick={deletePart} disabled={!selected}><Trash2 size={15}/> Löschen</button></div>
         <label>Bauteil</label>
