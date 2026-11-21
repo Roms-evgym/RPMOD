@@ -20,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 public final class AnvilSidebar {
@@ -28,6 +29,8 @@ public final class AnvilSidebar {
     private static final int FIRST_ROW_Y = 50;
     private static final Map<AnvilScreen, EditBox> SEARCH_BOXES = new WeakHashMap<>();
     private static final int VISIBLE_ROWS = 4;
+    private static final Set<AnvilScreen> COLLAPSED = java.util.Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Map<AnvilScreen, String> SELECTED = new WeakHashMap<>();
 
     private AnvilSidebar() {}
 
@@ -51,11 +54,13 @@ public final class AnvilSidebar {
         List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
 
         int x = localPanelX(screen);
+        boolean collapsed = COLLAPSED.contains(screen);
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
-        int height = FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
+        int height = collapsed ? 26 : FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
         graphics.fill(x, 0, x + PANEL_WIDTH, height, 0xE8111A29);
         graphics.outline(x, 0, PANEL_WIDTH, height, 0xFF40536D);
-        graphics.text(screen.getFont(), "RPMOD · ITEMS", x + 8, 7, 0xFF9DF36A);
+        graphics.text(screen.getFont(), collapsed ? "▶ RPMOD · ITEMS" : "▼ RPMOD · ITEMS", x + 8, 7, 0xFF9DF36A);
+        if (collapsed) return;
         graphics.text(screen.getFont(), recipes.size() + " Treffer", x + 8, 18, 0xFF93A4BB);
         if (recipes.isEmpty()) {
             graphics.text(screen.getFont(), "Keine Items gefunden", x + 8, 53, 0xFF91A2B9);
@@ -65,7 +70,8 @@ public final class AnvilSidebar {
         for (int i = 0; i < rows; i++) {
             AnvilRecipeStore.Recipe recipe = recipes.get(i);
             int rowY = FIRST_ROW_Y + i * ROW_HEIGHT;
-            graphics.fill(x + 5, rowY, x + PANEL_WIDTH - 5, rowY + ROW_HEIGHT - 2, 0xFF1B293B);
+            boolean selected = (recipe.shareCode() + "/" + recipe.id()).equals(SELECTED.get(screen));
+            graphics.fill(x + 5, rowY, x + PANEL_WIDTH - 5, rowY + ROW_HEIGHT - 2, selected ? 0xFF36543A : 0xFF1B293B);
             ItemStack base = createBaseStack(recipe.baseItem());
             ItemStack result = base.copy();
             try {
@@ -89,12 +95,22 @@ public final class AnvilSidebar {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int x = accessor.rpmod$getLeftPos() + localPanelX(screen);
         int y = accessor.rpmod$getTopPos();
+        boolean collapsed = COLLAPSED.contains(screen);
         int rows = Math.min(VISIBLE_ROWS, recipes.size());
-        int height = FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
+        int height = collapsed ? 26 : FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
         if (mouseX < x || mouseX >= x + PANEL_WIDTH || mouseY < y || mouseY >= y + height) return false;
+        if (mouseY <= y + 26) {
+            if (collapsed) COLLAPSED.remove(screen); else COLLAPSED.add(screen);
+            return true;
+        }
+        if (collapsed) return true;
         if (mouseX >= x + 8 && mouseX <= x + PANEL_WIDTH - 8 && mouseY >= y + 30 && mouseY <= y + 46) return false;
         int row = (int) ((mouseY - y - FIRST_ROW_Y) / ROW_HEIGHT);
-        if (row >= 0 && row < rows) autofill(screen, recipes.get(row));
+        if (row >= 0 && row < rows) {
+            AnvilRecipeStore.Recipe selected = recipes.get(row);
+            SELECTED.put(screen, selected.shareCode() + "/" + selected.id());
+            autofill(screen, selected);
+        }
         return true;
     }
 
