@@ -125,13 +125,13 @@ export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
     modelGroup.scale.set(...t.scale);
     scene.add(modelGroup);
     const meshes: THREE.Mesh[] = [];
+    const itemTexture = textureDataUrl ? new THREE.TextureLoader().load(textureDataUrl) : null;
+    if (itemTexture) { itemTexture.magFilter = THREE.NearestFilter; itemTexture.minFilter = THREE.NearestFilter; itemTexture.colorSpace = THREE.SRGBColorSpace; }
     for (const part of parts) {
       const width = Math.max(.1, part.to[0] - part.from[0]);
       const height = Math.max(.1, part.to[1] - part.from[1]);
       const depth = Math.max(.1, part.to[2] - part.from[2]);
       const geometry = new THREE.BoxGeometry(width, height, depth);
-      const itemTexture = textureDataUrl ? new THREE.TextureLoader().load(textureDataUrl) : null;
-      if (itemTexture) { itemTexture.magFilter = THREE.NearestFilter; itemTexture.minFilter = THREE.NearestFilter; itemTexture.colorSpace = THREE.SRGBColorSpace; }
       const material = new THREE.MeshStandardMaterial({ color: itemTexture ? 0xffffff : part.color, map: itemTexture, roughness: .72, metalness: .04 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set((part.from[0] + part.to[0]) / 2 - 8, (part.from[1] + part.to[1]) / 2 - 8, (part.from[2] + part.to[2]) / 2 - 8);
@@ -160,6 +160,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
     const animate = () => { frame = requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); };
     animate();
     return () => {
+      itemTexture?.dispose();
       cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointerDown); controls.dispose();
       modelGroup.traverse(object => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
@@ -170,7 +171,7 @@ export default function ModelEditor({ onModelChange, textureDataUrl }: Props) {
       });
       renderer.dispose(); renderer.domElement.remove();
     };
-  }, [parts, selectedId, view, transform]);
+  }, [parts, selectedId, view, transform, textureDataUrl]);
 
   function updateNumber(field: "from" | "to", axis: 0 | 1 | 2, value: number) {
     if (!selected) return;
