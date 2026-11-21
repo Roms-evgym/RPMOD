@@ -17,6 +17,7 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.List;
 import java.util.Map;
@@ -29,87 +30,124 @@ public final class AnvilSidebar {
     private static final int FIRST_ROW_Y = 50;
     private static final Map<AnvilScreen, EditBox> SEARCH_BOXES = new WeakHashMap<>();
     private static final int VISIBLE_ROWS = 4;
-    private static final Set<AnvilScreen> COLLAPSED = java.util.Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<AnvilScreen> OPEN = java.util.Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<String> COLLAPSED_CATEGORIES = new java.util.HashSet<>();
     private static final Map<AnvilScreen, String> SELECTED = new WeakHashMap<>();
 
     private AnvilSidebar() {}
 
     public static void initSearch(AnvilScreen screen) {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
-        int x = accessor.rpmod$getLeftPos() + localPanelX(screen) + 8;
-        int y = accessor.rpmod$getTopPos() + 30;
+        int x = panelX(screen) + 8;
+        int y = accessor.rpmod$getTopPos() + 27;
         ((AnvilScreenAccessor) screen).rpmod$getName().setCanLoseFocus(true);
         EditBox box = new EditBox(screen.getFont(), x, y, PANEL_WIDTH - 16, 14, Component.literal("RPMOD Suche"));
         box.setMaxLength(48);
+        box.setHint(Component.literal("Custom-Items suchen"));
+        box.setVisible(false);
         ((ScreenAccessor) screen).rpmod$addRenderableWidget(box);
         SEARCH_BOXES.put(screen, box);
     }
 
     public static void renderSearch(AnvilScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         EditBox box = SEARCH_BOXES.get(screen);
-        if (box != null && !COLLAPSED.contains(screen)) box.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        if (box != null && OPEN.contains(screen)) box.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    }
+
+    public static void renderBookButton(AnvilScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+        int x = accessor.rpmod$getLeftPos() + 7;
+        int y = accessor.rpmod$getTopPos() + 25;
+        boolean open = OPEN.contains(screen);
+        boolean hovered = mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18;
+        graphics.fill(x - 1, y - 1, x + 19, y + 19, open ? 0xFF557A43 : hovered ? 0xFF59677A : 0xFF292D36);
+        graphics.outline(x - 1, y - 1, 20, 20, open ? 0xFF9DF36A : 0xFF8794A8);
+        graphics.item(new ItemStack(Items.KNOWLEDGE_BOOK), x, y);
     }
 
     public static void render(AnvilScreen screen, GuiGraphicsExtractor graphics) {
+        if (!OPEN.contains(screen)) return;
         List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
-
-        int x = localPanelX(screen);
-        boolean collapsed = COLLAPSED.contains(screen);
-        int rows = Math.min(VISIBLE_ROWS, recipes.size());
-        int height = collapsed ? 26 : FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
-        graphics.fill(x, 0, x + PANEL_WIDTH, height, 0xE8111A29);
-        graphics.outline(x, 0, PANEL_WIDTH, height, 0xFF40536D);
-        graphics.text(screen.getFont(), collapsed ? "▶ RPMOD · ITEMS" : "▼ RPMOD · ITEMS", x + 8, 7, 0xFF9DF36A);
-        if (collapsed) return;
-        graphics.text(screen.getFont(), recipes.size() + " Treffer", x + 8, 18, 0xFF93A4BB);
-        if (recipes.isEmpty()) {
-            graphics.text(screen.getFont(), "Keine Items gefunden", x + 8, 53, 0xFF91A2B9);
+        Map<String, List<AnvilRecipeStore.Recipe>> groups = new java.util.LinkedHashMap<>();
+        for (AnvilRecipeStore.Recipe recipe : recipes) {
+            groups.computeIfAbsent(recipe.shareCode(), ignored -> new java.util.ArrayList<>()).add(recipe);
+        }
+        AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
+        int x = panelX(screen);
+        int y = accessor.rpmod$getTopPos();
+        int height = Math.max(100, screen.height - y - 8);
+        graphics.fill(x, y, x + PANEL_WIDTH, y + height, 0xF0111825);
+        graphics.outline(x, y, PANEL_WIDTH, height, 0xFF52627A);
+        graphics.fill(x + 1, y + 1, x + PANEL_WIDTH - 1, y + 21, 0xFF29394F);
+        graphics.text(screen.getFont(), "RPMOD · CUSTOM-ITEMS", x + 7, y + 7, 0xFF9DF36A);
+        graphics.text(screen.getFont(), recipes.size() + " Items", x + 7, y + 21, 0xFFB7C4D5);
+        int rowY = y + 48;
+        if (groups.isEmpty()) {
+            graphics.text(screen.getFont(), "Keine Custom-Items", x + 8, rowY + 5, 0xFF9AA9BB);
             return;
         }
-
-        for (int i = 0; i < rows; i++) {
-            AnvilRecipeStore.Recipe recipe = recipes.get(i);
-            int rowY = FIRST_ROW_Y + i * ROW_HEIGHT;
-            boolean selected = (recipe.shareCode() + "/" + recipe.id()).equals(SELECTED.get(screen));
-            graphics.fill(x + 5, rowY, x + PANEL_WIDTH - 5, rowY + ROW_HEIGHT - 2, selected ? 0xFF36543A : 0xFF1B293B);
-            ItemStack base = createBaseStack(recipe.baseItem());
-            ItemStack result = base.copy();
-            try {
-                result.set(DataComponents.ITEM_MODEL, Identifier.parse("rpmod:" + recipe.shareCode().toLowerCase() + "/" + recipe.id()));
-            } catch (Exception ignored) {}
-            graphics.item(base, x + 8, rowY + 7);
-            graphics.text(screen.getFont(), "→", x + 29, rowY + 10, 0xFF9DF36A);
-            graphics.item(result, x + 43, rowY + 7);
-            graphics.text(screen.getFont(), trim(screen, recipe.renameTrigger(), 62), x + 66, rowY + 5, 0xFFFFFFFF);
-            graphics.text(screen.getFont(), trim(screen, recipe.baseItemName(), 62), x + 66, rowY + 18, 0xFF91A2B9);
-        }
-
-        if (recipes.size() > VISIBLE_ROWS) {
-            graphics.text(screen.getFont(), "Nutze /rp sync für Updates", x + 8, height - 12, 0xFF91A2B9);
+        for (Map.Entry<String, List<AnvilRecipeStore.Recipe>> entry : groups.entrySet()) {
+            String project = entry.getKey();
+            List<AnvilRecipeStore.Recipe> projectItems = entry.getValue();
+            boolean collapsed = COLLAPSED_CATEGORIES.contains(project);
+            graphics.fill(x + 4, rowY, x + PANEL_WIDTH - 4, rowY + 22, 0xFF35465C);
+            graphics.text(screen.getFont(), collapsed ? "▶" : "▼", x + 9, rowY + 7, 0xFFFFFFFF);
+            graphics.text(screen.getFont(), trim(screen, project + " (" + projectItems.size() + ")", PANEL_WIDTH - 36), x + 23, rowY + 7, 0xFFFFFFFF);
+            rowY += 23;
+            if (!collapsed) {
+                for (AnvilRecipeStore.Recipe recipe : projectItems) {
+                    if (rowY + 23 > y + height - 3) break;
+                    boolean selected = (recipe.shareCode() + "/" + recipe.id()).equals(SELECTED.get(screen));
+                    graphics.fill(x + 8, rowY, x + PANEL_WIDTH - 8, rowY + 22, selected ? 0xFF36543A : 0xFF202C3C);
+                    ItemStack icon = createBaseStack(recipe.baseItem());
+                    try {
+                        icon.set(DataComponents.ITEM_MODEL, Identifier.parse("rpmod:" + recipe.shareCode().toLowerCase() + "/" + recipe.id()));
+                    } catch (Exception ignored) {}
+                    graphics.item(icon, x + 11, rowY + 3);
+                    graphics.text(screen.getFont(), trim(screen, recipe.renameTrigger(), PANEL_WIDTH - 48), x + 33, rowY + 7,
+                        selected ? 0xFF9DF36A : 0xFFE8EDF5);
+                    rowY += 23;
+                }
+            }
         }
     }
 
     public static boolean handleClick(AnvilScreen screen, double mouseX, double mouseY) {
-        List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
-        if (AnvilRecipeStore.getRecipes().isEmpty()) return false;
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
-        int x = accessor.rpmod$getLeftPos() + localPanelX(screen);
-        int y = accessor.rpmod$getTopPos();
-        boolean collapsed = COLLAPSED.contains(screen);
-        int rows = Math.min(VISIBLE_ROWS, recipes.size());
-        int height = collapsed ? 26 : FIRST_ROW_Y + rows * ROW_HEIGHT + 8;
-        if (mouseX < x || mouseX >= x + PANEL_WIDTH || mouseY < y || mouseY >= y + height) return false;
-        if (mouseY <= y + 26) {
-            if (collapsed) COLLAPSED.remove(screen); else COLLAPSED.add(screen);
+        int bookX = accessor.rpmod$getLeftPos() + 7;
+        int bookY = accessor.rpmod$getTopPos() + 25;
+        if (mouseX >= bookX - 1 && mouseX < bookX + 19 && mouseY >= bookY - 1 && mouseY < bookY + 19) {
+            boolean opening = !OPEN.contains(screen);
+            if (opening) OPEN.add(screen); else OPEN.remove(screen);
+            EditBox search = SEARCH_BOXES.get(screen);
+            if (search != null) search.setVisible(opening);
             return true;
         }
-        if (collapsed) return true;
-        if (mouseX >= x + 8 && mouseX <= x + PANEL_WIDTH - 8 && mouseY >= y + 30 && mouseY <= y + 46) return false;
-        int row = (int) ((mouseY - y - FIRST_ROW_Y) / ROW_HEIGHT);
-        if (row >= 0 && row < rows) {
-            AnvilRecipeStore.Recipe selected = recipes.get(row);
-            SELECTED.put(screen, selected.shareCode() + "/" + selected.id());
-            autofill(screen, selected);
+        if (!OPEN.contains(screen)) return false;
+        int x = panelX(screen);
+        int y = accessor.rpmod$getTopPos();
+        if (mouseX < x || mouseX >= x + PANEL_WIDTH || mouseY < y || mouseY >= screen.height) return false;
+        if (mouseY >= y + 27 && mouseY <= y + 46) return false;
+        List<AnvilRecipeStore.Recipe> recipes = filteredRecipes(screen);
+        Map<String, List<AnvilRecipeStore.Recipe>> groups = new java.util.LinkedHashMap<>();
+        for (AnvilRecipeStore.Recipe recipe : recipes) groups.computeIfAbsent(recipe.shareCode(), ignored -> new java.util.ArrayList<>()).add(recipe);
+        int rowY = y + 48;
+        for (Map.Entry<String, List<AnvilRecipeStore.Recipe>> entry : groups.entrySet()) {
+            if (mouseY >= rowY && mouseY < rowY + 23) {
+                if (!COLLAPSED_CATEGORIES.add(entry.getKey())) COLLAPSED_CATEGORIES.remove(entry.getKey());
+                return true;
+            }
+            rowY += 23;
+            if (!COLLAPSED_CATEGORIES.contains(entry.getKey())) {
+                for (AnvilRecipeStore.Recipe recipe : entry.getValue()) {
+                    if (mouseY >= rowY && mouseY < rowY + 23) {
+                        SELECTED.put(screen, recipe.shareCode() + "/" + recipe.id());
+                        autofill(screen, recipe);
+                        return true;
+                    }
+                    rowY += 23;
+                }
+            }
         }
         return true;
     }
@@ -171,12 +209,11 @@ public final class AnvilSidebar {
         }
     }
 
-    private static int localPanelX(AnvilScreen screen) {
+    private static int panelX(AnvilScreen screen) {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int left = accessor.rpmod$getLeftPos();
-        int right = accessor.rpmod$getImageWidth() + 8;
-        if (left + right + PANEL_WIDTH > screen.width - 4) return Math.max(6, left - PANEL_WIDTH - 8) - left;
-        return right;
+        if (left - PANEL_WIDTH - 8 >= 4) return left - PANEL_WIDTH - 8;
+        return Math.min(screen.width - PANEL_WIDTH - 4, left + accessor.rpmod$getImageWidth() + 8);
     }
 
     private static List<AnvilRecipeStore.Recipe> filteredRecipes(AnvilScreen screen) {
@@ -186,7 +223,7 @@ public final class AnvilSidebar {
         return AnvilRecipeStore.getRecipes().stream().filter(recipe ->
             recipe.renameTrigger().toLowerCase().contains(query)
                 || recipe.baseItemName().toLowerCase().contains(query)
-                || recipe.id().toLowerCase().contains(query)
+                || recipe.id().toLowerCase().contains(query)\n                || recipe.shareCode().toLowerCase().contains(query)
         ).toList();
     }
 
