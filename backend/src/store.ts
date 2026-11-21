@@ -54,10 +54,24 @@ export async function createProject(name: string) {
     gameVersions: ["26.3"], customItems: []
   };
   updateHash(manifest);
-  await pool.query(
-    "INSERT INTO projects (share_code,name,edit_token_hash,pack_hash,manifest_json) VALUES ($1,$2,$3,$4,$5::jsonb)",
-    [manifest.shareCode, name, hash(editToken), manifest.packHash, JSON.stringify(manifest)]
-  );
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Serialize project-name checks so two simultaneous requests cannot claim the same name.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('rpmod-project-name'))");
+    const duplicate = await client.query("SELECT 1 FROM projects WHERE lower(trim(name))=lower(trim($1)) LIMIT 1", [name]);
+    if (duplicate.rowCount) throw new Error("Ein Resource Pack mit diesem Namen existiert bereits. Bitte wähle einen anderen Namen.");
+    await client.query(
+      "INSERT INTO projects (share_code,name,edit_token_hash,pack_hash,manifest_json) VALUES ($1,$2,$3,$4,$5::jsonb)",
+      [manifest.shareCode, name, hash(editToken), manifest.packHash, JSON.stringify(manifest)]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
   return { shareCode: manifest.shareCode, editToken, manifest };
 }
 export async function getManifest(code: string): Promise<ProjectManifest | undefined> {
