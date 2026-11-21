@@ -131,10 +131,11 @@ public final class RpProjectManager {
             }
             String summary = "RPMOD-Updateprüfung: " + checked + " Projekt(e) geprüft, " + changed + " Update(s) bereit, " + failed + " Fehler."; 
             if (changed > 0) {
+                int updateCount = changed;
                 Minecraft.getInstance().execute(() -> {
                     if (Minecraft.getInstance().player != null) {
                         var prompt = net.minecraft.network.chat.Component.literal("RPMOD: ")
-                            .append(net.minecraft.network.chat.Component.literal(changed + " Resource-Pack-Update(s) verfügbar. "))
+                            .append(net.minecraft.network.chat.Component.literal(updateCount + " Resource-Pack-Update(s) verfügbar. "))
                             .append(net.minecraft.network.chat.Component.literal("[Neu laden]")
                                 .setStyle(Style.EMPTY.withColor(0x55FF55).withUnderlined(true).withClickEvent(new ClickEvent.RunCommand("/rp reload"))));
                         Minecraft.getInstance().player.sendSystemMessage(prompt);
