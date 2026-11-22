@@ -14,7 +14,7 @@ public final class RPMODCommands {
             dispatcher.register(ClientCommands.literal("rp")
                 .then(ClientCommands.literal("gui")
                     .executes(context -> {
-                        Minecraft.getInstance().gui.setScreen(new RpGuiScreen());
+                        Minecraft.getInstance().setScreen(new RpGuiScreen());
                         return 1;
                     }))
                 .then(ClientCommands.literal("join")
