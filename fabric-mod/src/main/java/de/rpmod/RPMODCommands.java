@@ -14,7 +14,9 @@ public final class RPMODCommands {
             dispatcher.register(ClientCommands.literal("rp")
                 .then(ClientCommands.literal("gui")
                     .executes(context -> {
-                        Minecraft.getInstance().gui.setScreen(new RpGuiScreen());
+                        Minecraft client = Minecraft.getInstance();
+                        client.execute(() -> client.gui.setScreen(new RpGuiScreen()));
+                        context.getSource().sendFeedback(Component.literal("RPMOD: GUI wird geöffnet ..."));
                         return 1;
                     }))
                 .then(ClientCommands.literal("join")
@@ -47,7 +49,7 @@ public final class RPMODCommands {
                         })))
                 .then(ClientCommands.literal("help")
                     .executes(context -> {
-                        context.getSource().sendFeedback(Component.literal("RPMOD Befehle: /rp join <CODE>, /rp sync, /rp leave <CODE>"));
+                        context.getSource().sendFeedback(Component.literal("RPMOD Befehle: /rp gui, /rp join <CODE>, /rp sync, /rp leave <CODE>"));
                         return 1;
                     }))
             )
