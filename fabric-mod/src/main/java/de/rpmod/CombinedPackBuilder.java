@@ -52,7 +52,7 @@ public final class CombinedPackBuilder {
                         String itemPath = parts[1];
                         String assetPath = "assets/" + namespace + "/items/" + itemPath + ".json";
                         JsonArray cases = casesByBaseItem.computeIfAbsent(assetPath, ignored -> new JsonArray());
-                        String trigger = item.get("renameTrigger").getAsString();
+                        String trigger = manifest.get("name").getAsString() + ":" + item.get("renameTrigger").getAsString();
                         String id = item.get("id").getAsString();
                         JsonObject when = new JsonObject();
                         when.addProperty("text", trigger);
