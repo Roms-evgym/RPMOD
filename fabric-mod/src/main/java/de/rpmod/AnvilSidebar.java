@@ -56,8 +56,8 @@ public final class AnvilSidebar {
 
     public static void renderBookButton(AnvilScreen screen, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
-        int x = accessor.rpmod$getLeftPos() + 7;
-        int y = accessor.rpmod$getTopPos() + 25;
+        int x = panelX(screen) + PANEL_WIDTH - 25;
+        int y = accessor.rpmod$getTopPos() + 2;
         boolean open = OPEN.contains(screen);
         boolean hovered = mouseX >= x && mouseX < x + 18 && mouseY >= y && mouseY < y + 18;
         graphics.fill(x - 1, y - 1, x + 19, y + 19, open ? 0xFF557A43 : hovered ? 0xFF59677A : 0xFF292D36);
@@ -114,8 +114,8 @@ public final class AnvilSidebar {
 
     public static boolean handleClick(AnvilScreen screen, double mouseX, double mouseY) {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
-        int bookX = accessor.rpmod$getLeftPos() + 7;
-        int bookY = accessor.rpmod$getTopPos() + 25;
+        int bookX = panelX(screen) + PANEL_WIDTH - 25;
+        int bookY = accessor.rpmod$getTopPos() + 2;
         if (mouseX >= bookX - 1 && mouseX < bookX + 19 && mouseY >= bookY - 1 && mouseY < bookY + 19) {
             boolean opening = !OPEN.contains(screen);
             if (opening) OPEN.add(screen); else OPEN.remove(screen);
@@ -214,7 +214,7 @@ public final class AnvilSidebar {
         AbstractContainerScreenAccessor accessor = (AbstractContainerScreenAccessor) screen;
         int left = accessor.rpmod$getLeftPos();
         if (left - PANEL_WIDTH - 8 >= 4) return left - PANEL_WIDTH - 8;
-        return Math.min(screen.width - PANEL_WIDTH - 4, left + accessor.rpmod$getImageWidth() + 8);
+        return Math.max(4, Math.min(screen.width - PANEL_WIDTH - 4, left + accessor.rpmod$getImageWidth() + 8));
     }
 
     private static List<AnvilRecipeStore.Recipe> filteredRecipes(AnvilScreen screen) {
